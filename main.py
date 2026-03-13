@@ -1,33 +1,47 @@
-"""Main entry point. Loads patient data from JSON file into a dict."""
-import os
+"""Quick local inspection entrypoint for patients.json."""
 
-from utils import load_patients_from_json
+from pathlib import Path
+import sys
+
+SRC_DIR = Path(__file__).resolve().parent / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from poc.config import resolve_repo_path
+from poc.repositories.patient_repository import PatientRepository
 
 TARGET_PATIENT_ID = "123455"
 
-if __name__ == "__main__":
-    base = os.path.dirname(os.path.abspath(__file__))
-    json_path = os.path.join(base, "patients.json")
 
-    patients = load_patients_from_json(json_path)
+def main() -> None:
+    json_path = resolve_repo_path("patients.json")
+    patients = PatientRepository.load_patients_from_json(json_path)
 
     print(f"Loaded {len(patients)} patients from {json_path}\n")
-    for pid, p in list(patients.items())[:2]:
-        lab_count = len(p.get("lab_reports", []))
-        med_count = len(p.get("medications", []))
-        prob_count = len(p.get("problems", []))
-        print(f"Patient {pid} (enterpriseid): {lab_count} lab reports, {med_count} meds, {prob_count} problems")
+    for patient_id, patient in list(patients.items())[:2]:
+        lab_count = len(patient.get("lab_reports", []))
+        med_count = len(patient.get("medications", []))
+        problem_count = len(patient.get("problems", []))
+        print(
+            f"Patient {patient_id} (enterpriseid): "
+            f"{lab_count} lab reports, {med_count} meds, {problem_count} problems"
+        )
     print()
 
-    if TARGET_PATIENT_ID in patients:
-        p = patients[TARGET_PATIENT_ID]
-        print(f"\n{'='*60}\nPatient ID (enterpriseid): {TARGET_PATIENT_ID}\n{'='*60}")
-        print(f"Lab reports: {len(p.get('lab_reports', []))}")
-        for i, lr in enumerate(p.get("lab_reports", [])[:3]):
-            print(f"  LabReport[{i+1}] id={lr.get('lab_report_id', '')}")
-            for r in lr.get("results", [])[:2]:
-                print(f"    {r.get('labanalyte')}: {r.get('labvalue')}")
-        print(f"\nMedications: {p.get('medications', [])}")
-        print(f"Problems: {p.get('problems', [])}")
-    else:
+    if TARGET_PATIENT_ID not in patients:
         print(f"\nPatient ID {TARGET_PATIENT_ID} not found.")
+        return
+
+    patient = patients[TARGET_PATIENT_ID]
+    print(f"\n{'=' * 60}\nPatient ID (enterpriseid): {TARGET_PATIENT_ID}\n{'=' * 60}")
+    print(f"Lab reports: {len(patient.get('lab_reports', []))}")
+    for index, report in enumerate(patient.get("lab_reports", [])[:3], start=1):
+        print(f"  LabReport[{index}] id={report.get('lab_report_id', '')}")
+        for result in report.get("results", [])[:2]:
+            print(f"    {result.get('labanalyte')}: {result.get('labvalue')}")
+    print(f"\nMedications: {patient.get('medications', [])}")
+    print(f"Problems: {patient.get('problems', [])}")
+
+
+if __name__ == "__main__":
+    main()

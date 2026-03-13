@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-"""Generate patients.json from Lab orders CSV and Medication.xlsx."""
-import argparse
-import os
+"""Generate patients.json from lab orders and medication sources."""
 
-from models import load_patients
-from utils import save_patients_to_json
+import argparse
+from pathlib import Path
+import sys
+
+SRC_DIR = Path(__file__).resolve().parent / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from poc.config import resolve_repo_path
+from poc.repositories.patient_repository import PatientRepository
+from poc.services.patient_data_loader import PatientDataLoader
 
 
 def main() -> None:
@@ -27,17 +34,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    base = os.path.dirname(os.path.abspath(__file__))
-    lab_path = args.lab_csv if os.path.isabs(args.lab_csv) else os.path.join(base, args.lab_csv)
-    med_path = args.medication_xlsx if os.path.isabs(args.medication_xlsx) else os.path.join(base, args.medication_xlsx)
-    out_path = args.output if os.path.isabs(args.output) else os.path.join(base, args.output)
+    lab_path = resolve_repo_path(args.lab_csv)
+    med_path = resolve_repo_path(args.medication_xlsx)
+    output_path = resolve_repo_path(args.output)
 
-    patients = load_patients(
-        lab_csv_path=lab_path,
-        medication_xlsx_path=med_path if os.path.exists(med_path) else None,
+    loader = PatientDataLoader()
+    repository = PatientRepository()
+    patients = loader.load_patients(
+        lab_csv_path=str(lab_path),
+        medication_xlsx_path=str(med_path) if med_path.exists() else None,
     )
-    save_patients_to_json(patients, out_path)
-    print(f"Generated {out_path} with {len(patients)} patients")
+    repository.save_patients_to_json(patients, output_path)
+    print(f"Generated {output_path} with {len(patients)} patients")
 
 
 if __name__ == "__main__":

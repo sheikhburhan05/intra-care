@@ -1,0 +1,15 @@
+"""Backward-compatible prompts export."""
+
+from src.prompts import (
+    PROMPT_HUDDLE_ANALYSIS,
+    PROMPT_THRESHOLD_SEARCH,
+    THRESHOLDS_BLOCK_FALLBACK,
+    THRESHOLDS_BLOCK_WITH_RESULTS,
+)
+
+__all__ = [
+    "PROMPT_THRESHOLD_SEARCH",
+    "PROMPT_HUDDLE_ANALYSIS",
+    "THRESHOLDS_BLOCK_WITH_RESULTS",
+    "THRESHOLDS_BLOCK_FALLBACK",
+]
