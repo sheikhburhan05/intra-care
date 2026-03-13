@@ -1,4 +1,4 @@
-"""Quick local inspection entrypoint for patients.json."""
+"""Interactive entrypoint for patient huddle analysis."""
 
 from pathlib import Path
 import sys
@@ -7,40 +7,34 @@ SRC_DIR = Path(__file__).resolve().parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from src.config import resolve_repo_path
-from src.repositories.patient_repository import PatientRepository
-
-TARGET_PATIENT_ID = "123455"
+from src.config import DEFAULT_HUDDLE_MODEL, resolve_repo_path
+from src.services.huddle_analyzer import HuddleAnalyzer
 
 
 def main() -> None:
-    json_path = resolve_repo_path("patients.json")
-    patients = PatientRepository.load_patients_from_json(json_path)
-
-    print(f"Loaded {len(patients)} patients from {json_path}\n")
-    for patient_id, patient in list(patients.items())[:2]:
-        lab_count = len(patient.get("lab_reports", []))
-        med_count = len(patient.get("medications", []))
-        problem_count = len(patient.get("problems", []))
-        print(
-            f"Patient {patient_id} (enterpriseid): "
-            f"{lab_count} lab reports, {med_count} meds, {problem_count} problems"
-        )
-    print()
-
-    if TARGET_PATIENT_ID not in patients:
-        print(f"\nPatient ID {TARGET_PATIENT_ID} not found.")
+    patient_id = input("Enter patientId: ").strip()
+    if not patient_id:
+        print("patientId is required.")
         return
 
-    patient = patients[TARGET_PATIENT_ID]
-    print(f"\n{'=' * 60}\nPatient ID (enterpriseid): {TARGET_PATIENT_ID}\n{'=' * 60}")
-    print(f"Lab reports: {len(patient.get('lab_reports', []))}")
-    for index, report in enumerate(patient.get("lab_reports", [])[:3], start=1):
-        print(f"  LabReport[{index}] id={report.get('lab_report_id', '')}")
-        for result in report.get("results", [])[:2]:
-            print(f"    {result.get('labanalyte')}: {result.get('labvalue')}")
-    print(f"\nMedications: {patient.get('medications', [])}")
-    print(f"Problems: {patient.get('problems', [])}")
+    analyzer = HuddleAnalyzer()
+    patients_json = str(resolve_repo_path("patients.json"))
+    output_dir = str(resolve_repo_path("."))
+
+    try:
+        analyzer.analyze_patient_huddle(
+            patient_id=patient_id,
+            patients_json_path=patients_json,
+            output_dir=output_dir,
+            model=DEFAULT_HUDDLE_MODEL,
+            use_web_search=True,
+            use_llm_tools=True,
+        )
+        print(f"Done. Created file: {patient_id}.json")
+    except ValueError as exc:
+        print(str(exc))
+    except Exception as exc:
+        print(f"Failed to run huddle analysis: {exc}")
 
 
 if __name__ == "__main__":

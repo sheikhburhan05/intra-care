@@ -13,6 +13,7 @@ class MedicationGap(BaseModel):
 
 
 class LabGap(BaseModel):
+    lab_report_id: str = Field(default="", description="Lab report ID where this gap was detected")
     lab_analyte: str = Field(description="Lab test name")
     lab_value: str = Field(description="Reported value")
     implied_condition: str = Field(description="Condition suggested by abnormal lab")

@@ -10,16 +10,28 @@ from typing import Any, Optional
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
+from pydantic import BaseModel, Field
 
 from ..config import DEFAULT_HUDDLE_MODEL, resolve_repo_path
-from ..domain.huddle_output import HuddleAnalysisOutput
+from ..domain.huddle_output import LabGap, MedicationGap
 from ..prompts import (
-    PROMPT_HUDDLE_ANALYSIS,
+    PROMPT_MEDICATION_GAP_ANALYSIS,
+    PROMPT_SINGLE_REPORT_GAP_ANALYSIS,
     PROMPT_THRESHOLD_SEARCH,
     THRESHOLDS_BLOCK_FALLBACK,
     THRESHOLDS_BLOCK_WITH_RESULTS,
 )
 from ..repositories.patient_repository import PatientRepository
+
+
+class SingleReportLabOutput(BaseModel):
+    suspected_gaps: list[LabGap] = Field(default_factory=list)
+    summary: str = Field(default="", description="Summary of missing diagnosis candidates for this report")
+
+
+class MedicationAnalysisOutput(BaseModel):
+    suspected_gaps: list[MedicationGap] = Field(default_factory=list)
+    summary: str = Field(default="", description="Summary of medication-problem list gaps")
 
 
 class HuddleAnalyzer:
@@ -48,7 +60,9 @@ class HuddleAnalyzer:
             raise ValueError(f"Patient {patient_id} not found in {json_path}")
 
         patient = patients[pid_key]
-        context = self._build_patient_context(patient)
+        problem_list = self._extract_problems(patient)
+        medications = self._extract_medications(patient)
+        lab_reports = patient.get("lab_reports", [])
         labs = self._extract_labs(patient)
         if use_web_search:
             print("LLM using search tool to fetch clinical lab thresholds...")
@@ -60,23 +74,61 @@ class HuddleAnalyzer:
             if thresholds_context
             else THRESHOLDS_BLOCK_FALLBACK
         )
-        prompt = PROMPT_HUDDLE_ANALYSIS.format(thresholds_block=thresholds_block, context=context)
-
         llm = ChatAnthropic(model=model, temperature=0)
-        structured_llm = llm.with_structured_output(HuddleAnalysisOutput)
-        result = structured_llm.invoke([HumanMessage(content=prompt)])
+        report_llm = llm.with_structured_output(SingleReportLabOutput)
+        medication_llm = llm.with_structured_output(MedicationAnalysisOutput)
+
+        medication_prompt = PROMPT_MEDICATION_GAP_ANALYSIS.format(
+            problem_list_json=json.dumps(problem_list, indent=2),
+            medications_json=json.dumps(medications, indent=2),
+        )
+        medication_result = medication_llm.invoke([HumanMessage(content=medication_prompt)])
+        medication_gaps = [gap.model_dump() for gap in medication_result.suspected_gaps if not gap.in_problem_list]
+
+        all_report_gaps: list[dict[str, Any]] = []
+        report_summaries: list[str] = []
+        for report in lab_reports:
+            report_id = str(report.get("lab_report_id", "")).strip()
+            report_results = self._format_report_results(report)
+            if not report_results:
+                continue
+            report_prompt = PROMPT_SINGLE_REPORT_GAP_ANALYSIS.format(
+                thresholds_block=thresholds_block,
+                problem_list_json=json.dumps(problem_list, indent=2),
+                report_id=report_id or "unknown",
+                report_results=report_results,
+            )
+            report_result = report_llm.invoke([HumanMessage(content=report_prompt)])
+            report_summaries.append(f"{report_id or 'unknown'}: {report_result.summary}")
+            for gap in report_result.suspected_gaps:
+                gap_dict = gap.model_dump()
+                gap_dict["lab_report_id"] = report_id or gap_dict.get("lab_report_id", "")
+                gap_dict["in_problem_list"] = bool(gap_dict.get("in_problem_list", False))
+                if gap_dict["in_problem_list"]:
+                    continue
+                all_report_gaps.append(gap_dict)
+
+        deduped_report_gaps = self._dedupe_lab_gaps(all_report_gaps)
+        lab_summary = self._build_lab_summary(deduped_report_gaps, report_summaries)
+        summary_note = self._build_summary_note(
+            problem_list=problem_list,
+            medications=medications,
+            medication_gaps=medication_gaps,
+            deduped_report_gaps=deduped_report_gaps,
+        )
 
         output = {
             "patient_id": patient_id,
             "medication_to_diagnosis": {
-                "suspected_gaps": [gap.model_dump() for gap in result.medication_to_diagnosis.suspected_gaps],
-                "summary": result.medication_to_diagnosis.summary,
+                "suspected_gaps": medication_gaps,
+                "summary": medication_result.summary
+                or self._build_medication_summary(medication_gaps),
             },
             "lab_report_to_diagnosis": {
-                "suspected_gaps": [gap.model_dump() for gap in result.lab_report_to_diagnosis.suspected_gaps],
-                "summary": result.lab_report_to_diagnosis.summary,
+                "suspected_gaps": deduped_report_gaps,
+                "summary": lab_summary,
             },
-            "summary_note_before_huddle": result.summary_note_before_huddle.model_dump(),
+            "summary_note_before_huddle": summary_note,
         }
 
         os.makedirs(out_dir, exist_ok=True)
@@ -85,6 +137,99 @@ class HuddleAnalyzer:
             json.dump(output, file, indent=2)
         print(f"Saved huddle analysis to {out_path}")
         return output
+
+    @staticmethod
+    def _format_report_results(report: dict[str, Any]) -> str:
+        lines: list[str] = []
+        for result in report.get("results", []):
+            analyte = str(result.get("labanalyte", "")).strip()
+            value = str(result.get("labvalue", "")).strip()
+            if analyte:
+                lines.append(f"- {analyte}: {value}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _dedupe_lab_gaps(gaps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen: set[tuple[str, str, str, str]] = set()
+        deduped: list[dict[str, Any]] = []
+        for gap in gaps:
+            key = (
+                str(gap.get("lab_report_id", "")).strip().lower(),
+                str(gap.get("lab_analyte", "")).strip().lower(),
+                str(gap.get("lab_value", "")).strip().lower(),
+                str(gap.get("implied_condition", "")).strip().lower(),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(gap)
+        return deduped
+
+    @staticmethod
+    def _build_lab_summary(deduped_report_gaps: list[dict[str, Any]], report_summaries: list[str]) -> str:
+        if not deduped_report_gaps:
+            return "No clear missing diagnosis candidates found from per-report lab analysis."
+        report_count = len({g.get("lab_report_id", "") for g in deduped_report_gaps})
+        gap_count = len(deduped_report_gaps)
+        return (
+            f"Detected {gap_count} missing diagnosis candidate(s) "
+            f"across {report_count} lab report(s). "
+            f"Report notes: {' | '.join(report_summaries[:5])}"
+        )
+
+    @staticmethod
+    def _build_medication_summary(medication_gaps: list[dict[str, Any]]) -> str:
+        if not medication_gaps:
+            return "No clear medication-to-diagnosis mismatches identified."
+        return f"Detected {len(medication_gaps)} medication item(s) requiring diagnosis linkage review."
+
+    @staticmethod
+    def _build_summary_note(
+        problem_list: list[str],
+        medications: list[str],
+        medication_gaps: list[dict[str, Any]],
+        deduped_report_gaps: list[dict[str, Any]],
+    ) -> dict[str, str]:
+        if not deduped_report_gaps and not medication_gaps:
+            return {
+                "context": (
+                    "Medication-to-problem-list review and per-report lab review found no clear missing diagnosis gaps."
+                ),
+                "suggested_huddle_note_bullet": "No additional medication- or lab-driven coding gaps identified at this time.",
+                "physician_prompt": "Continue routine monitoring and update coding if clinically significant changes emerge.",
+            }
+        med_conditions = ", ".join(
+            list(
+                dict.fromkeys(
+                    str(gap.get("implied_condition", "")).strip()
+                    for gap in medication_gaps
+                    if str(gap.get("implied_condition", "")).strip()
+                )
+            )[:5]
+        )
+        lab_conditions = ", ".join(
+            list(
+                dict.fromkeys(
+                    str(gap.get("implied_condition", "")).strip()
+                    for gap in deduped_report_gaps
+                    if str(gap.get("implied_condition", "")).strip()
+                )
+            )[:5]
+        )
+        return {
+            "context": (
+                f"Problem list reviewed ({len(problem_list)} entries), medications reviewed ({len(medications)} active), "
+                f"medication gaps detected ({len(medication_gaps)}), and lab-report gaps detected ({len(deduped_report_gaps)}). "
+                f"Medication-implied conditions: {med_conditions or 'none'}. "
+                f"Lab-implied conditions: {lab_conditions or 'none'}."
+            ),
+            "suggested_huddle_note_bullet": (
+                "Review flagged medications and abnormal lab reports, then confirm whether suggested conditions should be added/coded."
+            ),
+            "physician_prompt": (
+                "For each medication and lab flag, confirm diagnosis relevance/status and update the problem list/coding where clinically appropriate."
+            ),
+        }
 
     def _fetch_clinical_thresholds(self, labs: list[dict[str, str]], model: str, use_llm_tools: bool = True) -> str:
         if use_llm_tools:
@@ -188,22 +333,3 @@ class HuddleAnalyzer:
                     seen.add((analyte, value))
                     labs.append({"labanalyte": analyte, "labvalue": value})
         return labs
-
-    def _build_patient_context(self, patient: dict[str, Any]) -> str:
-        medications = self._extract_medications(patient)
-        problems = self._extract_problems(patient)
-        labs = self._extract_labs(patient)
-        lines = [
-            "## Patient Problem List (ICD-10 / SNOMED descriptions)",
-            json.dumps(problems, indent=2),
-            "",
-            "## Active Medications",
-            json.dumps(medications, indent=2),
-            "",
-            "## Lab Results (analyte: value)",
-        ]
-        for lab in labs[:80]:
-            lines.append(f"  - {lab['labanalyte']}: {lab['labvalue']}")
-        if len(labs) > 80:
-            lines.append(f"  ... and {len(labs) - 80} more")
-        return "\n".join(lines)
