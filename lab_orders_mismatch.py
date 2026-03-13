@@ -9,7 +9,7 @@ SRC_DIR = Path(__file__).resolve().parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from poc.config import resolve_repo_path
+from src.config import resolve_repo_path
 
 
 def read_lab_orders_and_log_mismatch(csv_path: str) -> pd.DataFrame:

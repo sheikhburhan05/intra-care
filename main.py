@@ -7,8 +7,8 @@ SRC_DIR = Path(__file__).resolve().parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from poc.config import resolve_repo_path
-from poc.repositories.patient_repository import PatientRepository
+from src.config import resolve_repo_path
+from src.repositories.patient_repository import PatientRepository
 
 TARGET_PATIENT_ID = "123455"
 

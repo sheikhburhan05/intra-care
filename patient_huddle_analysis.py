@@ -10,8 +10,8 @@ SRC_DIR = Path(__file__).resolve().parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from poc.config import DEFAULT_HUDDLE_MODEL
-from poc.domain.huddle_output import (
+from src.config import DEFAULT_HUDDLE_MODEL
+from src.domain.huddle_output import (
     HuddleAnalysisOutput,
     LabGap,
     LabReportToDiagnosis,
@@ -19,7 +19,7 @@ from poc.domain.huddle_output import (
     MedicationToDiagnosis,
     SummaryNoteBeforeHuddle,
 )
-from poc.services.huddle_analyzer import HuddleAnalyzer
+from src.services.huddle_analyzer import HuddleAnalyzer
 
 
 def analyze_patient_huddle(
