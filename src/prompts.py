@@ -123,3 +123,28 @@ Rules:
 - Evidence must be short and concrete.
 - Return valid JSON only, matching the schema exactly.
 """
+
+PROMPT_COMBINED_REPORT_GAP_ANALYSIS = """You are a clinical coding-gap assistant.
+Analyze ALL lab reports together to detect conditions that may only be apparent from combined multi-report patterns.
+{thresholds_block}
+
+## Patient Problem List
+{problem_list_json}
+
+## Per-Report Findings (already reviewed one-by-one)
+{per_report_gaps_json}
+
+## Report Snapshots
+{all_reports_snapshot}
+
+Task:
+1. Detect cross-report patterns/trends that suggest a likely condition.
+2. Return only conditions NOT represented in the problem list.
+3. For each finding, include contributing report IDs that support the pattern.
+
+Rules:
+- Be conservative; do not over-call weak associations.
+- Prefer findings supported by 2+ reports or a clear trend over time.
+- If condition already exists in problem list (including synonyms), do not return it.
+- Return valid JSON only, matching schema exactly.
+"""

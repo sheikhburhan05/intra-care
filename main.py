@@ -16,6 +16,8 @@ def main() -> None:
     if not patient_id:
         print("patientId is required.")
         return
+    combined_choice = input("Run combined multi-report lab analysis? [Y/n]: ").strip().lower()
+    enable_combined_lab_analysis = combined_choice not in {"n", "no"}
 
     analyzer = HuddleAnalyzer()
     patients_json = str(resolve_repo_path("patients.json"))
@@ -29,6 +31,7 @@ def main() -> None:
             model=DEFAULT_HUDDLE_MODEL,
             use_web_search=True,
             use_llm_tools=True,
+            enable_combined_lab_analysis=enable_combined_lab_analysis,
         )
         print(f"Done. Created file: {patient_id}.json")
     except ValueError as exc:

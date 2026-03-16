@@ -13,8 +13,9 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
 from ..config import DEFAULT_HUDDLE_MODEL, resolve_repo_path
-from ..domain.huddle_output import LabGap, MedicationGap
+from ..domain.huddle_output import CombinedLabGap, LabGap, MedicationGap
 from ..prompts import (
+    PROMPT_COMBINED_REPORT_GAP_ANALYSIS,
     PROMPT_MEDICATION_GAP_ANALYSIS,
     PROMPT_SINGLE_REPORT_GAP_ANALYSIS,
     PROMPT_THRESHOLD_SEARCH,
@@ -34,6 +35,11 @@ class MedicationAnalysisOutput(BaseModel):
     summary: str = Field(default="", description="Summary of medication-problem list gaps")
 
 
+class CombinedLabAnalysisOutput(BaseModel):
+    suspected_gaps: list[CombinedLabGap] = Field(default_factory=list)
+    summary: str = Field(default="", description="Summary of combined multi-report diagnosis gaps")
+
+
 class HuddleAnalyzer:
     """Run structured huddle analysis for a single patient."""
 
@@ -48,6 +54,7 @@ class HuddleAnalyzer:
         model: str = DEFAULT_HUDDLE_MODEL,
         use_web_search: bool = True,
         use_llm_tools: bool = True,
+        enable_combined_lab_analysis: bool = True,
     ) -> dict[str, Any]:
         json_path = resolve_repo_path(patients_json_path)
         out_dir = Path(output_dir) if output_dir else json_path.parent
@@ -77,6 +84,7 @@ class HuddleAnalyzer:
         llm = ChatAnthropic(model=model, temperature=0)
         report_llm = llm.with_structured_output(SingleReportLabOutput)
         medication_llm = llm.with_structured_output(MedicationAnalysisOutput)
+        combined_llm = llm.with_structured_output(CombinedLabAnalysisOutput)
 
         medication_prompt = PROMPT_MEDICATION_GAP_ANALYSIS.format(
             problem_list_json=json.dumps(problem_list, indent=2),
@@ -110,11 +118,20 @@ class HuddleAnalyzer:
 
         deduped_report_gaps = self._dedupe_lab_gaps(all_report_gaps)
         lab_summary = self._build_lab_summary(deduped_report_gaps, report_summaries)
+        combined_gaps, combined_summary = self._run_combined_lab_analysis(
+            combined_llm=combined_llm,
+            enable_combined_lab_analysis=enable_combined_lab_analysis,
+            lab_reports=lab_reports,
+            problem_list=problem_list,
+            deduped_report_gaps=deduped_report_gaps,
+            thresholds_block=thresholds_block,
+        )
         summary_note = self._build_summary_note(
             problem_list=problem_list,
             medications=medications,
             medication_gaps=medication_gaps,
             deduped_report_gaps=deduped_report_gaps,
+            combined_gaps=combined_gaps,
         )
 
         output = {
@@ -127,6 +144,10 @@ class HuddleAnalyzer:
             "lab_report_to_diagnosis": {
                 "suspected_gaps": deduped_report_gaps,
                 "summary": lab_summary,
+            },
+            "combined_lab_report_to_diagnosis": {
+                "suspected_gaps": combined_gaps,
+                "summary": combined_summary,
             },
             "summary_note_before_huddle": summary_note,
         }
@@ -184,16 +205,84 @@ class HuddleAnalyzer:
         return f"Detected {len(medication_gaps)} medication item(s) requiring diagnosis linkage review."
 
     @staticmethod
+    def _build_combined_lab_summary(combined_gaps: list[dict[str, Any]]) -> str:
+        if not combined_gaps:
+            return "No additional combined multi-report diagnosis gaps identified."
+        return f"Detected {len(combined_gaps)} combined multi-report diagnosis gap(s)."
+
+    def _run_combined_lab_analysis(
+        self,
+        combined_llm: Any,
+        enable_combined_lab_analysis: bool,
+        lab_reports: list[dict[str, Any]],
+        problem_list: list[str],
+        deduped_report_gaps: list[dict[str, Any]],
+        thresholds_block: str,
+    ) -> tuple[list[dict[str, Any]], str]:
+        if not enable_combined_lab_analysis:
+            return [], "Combined multi-report analysis disabled by flag."
+        if len(lab_reports) < 2 and len(deduped_report_gaps) < 2:
+            return [], "Insufficient multi-report context for combined analysis."
+
+        prompt = PROMPT_COMBINED_REPORT_GAP_ANALYSIS.format(
+            thresholds_block=thresholds_block,
+            problem_list_json=json.dumps(problem_list, indent=2),
+            per_report_gaps_json=json.dumps(deduped_report_gaps, indent=2),
+            all_reports_snapshot=self._format_all_reports_for_combined(lab_reports),
+        )
+        result = combined_llm.invoke([HumanMessage(content=prompt)])
+        combined_gaps = []
+        for gap in result.suspected_gaps:
+            gap_dict = gap.model_dump()
+            gap_dict["contributing_report_ids"] = [
+                str(report_id).strip() for report_id in gap_dict.get("contributing_report_ids", []) if str(report_id).strip()
+            ]
+            gap_dict["in_problem_list"] = bool(gap_dict.get("in_problem_list", False))
+            if gap_dict["in_problem_list"]:
+                continue
+            combined_gaps.append(gap_dict)
+        deduped = self._dedupe_combined_lab_gaps(combined_gaps)
+        return deduped, (result.summary or self._build_combined_lab_summary(deduped))
+
+    @staticmethod
+    def _format_all_reports_for_combined(lab_reports: list[dict[str, Any]]) -> str:
+        chunks: list[str] = []
+        for report in lab_reports:
+            report_id = str(report.get("lab_report_id", "")).strip() or "unknown"
+            lines = [f"Report ID: {report_id}"]
+            for result in report.get("results", [])[:40]:
+                analyte = str(result.get("labanalyte", "")).strip()
+                value = str(result.get("labvalue", "")).strip()
+                if analyte:
+                    lines.append(f"- {analyte}: {value}")
+            chunks.append("\n".join(lines))
+        return "\n\n".join(chunks[:50])
+
+    @staticmethod
+    def _dedupe_combined_lab_gaps(gaps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen: set[tuple[str, tuple[str, ...]]] = set()
+        deduped: list[dict[str, Any]] = []
+        for gap in gaps:
+            report_ids = tuple(sorted(set(gap.get("contributing_report_ids", []))))
+            key = (str(gap.get("implied_condition", "")).strip().lower(), report_ids)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(gap)
+        return deduped
+
+    @staticmethod
     def _build_summary_note(
         problem_list: list[str],
         medications: list[str],
         medication_gaps: list[dict[str, Any]],
         deduped_report_gaps: list[dict[str, Any]],
+        combined_gaps: list[dict[str, Any]],
     ) -> dict[str, str]:
-        if not deduped_report_gaps and not medication_gaps:
+        if not deduped_report_gaps and not medication_gaps and not combined_gaps:
             return {
                 "context": (
-                    "Medication-to-problem-list review and per-report lab review found no clear missing diagnosis gaps."
+                    "Medication review, per-report lab review, and combined multi-report review found no clear missing diagnosis gaps."
                 ),
                 "suggested_huddle_note_bullet": "No additional medication- or lab-driven coding gaps identified at this time.",
                 "physician_prompt": "Continue routine monitoring and update coding if clinically significant changes emerge.",
@@ -216,18 +305,28 @@ class HuddleAnalyzer:
                 )
             )[:5]
         )
+        combined_conditions = ", ".join(
+            list(
+                dict.fromkeys(
+                    str(gap.get("implied_condition", "")).strip()
+                    for gap in combined_gaps
+                    if str(gap.get("implied_condition", "")).strip()
+                )
+            )[:5]
+        )
         return {
             "context": (
                 f"Problem list reviewed ({len(problem_list)} entries), medications reviewed ({len(medications)} active), "
                 f"medication gaps detected ({len(medication_gaps)}), and lab-report gaps detected ({len(deduped_report_gaps)}). "
                 f"Medication-implied conditions: {med_conditions or 'none'}. "
-                f"Lab-implied conditions: {lab_conditions or 'none'}."
+                f"Lab-implied conditions: {lab_conditions or 'none'}. "
+                f"Combined multi-report conditions: {combined_conditions or 'none'}."
             ),
             "suggested_huddle_note_bullet": (
-                "Review flagged medications and abnormal lab reports, then confirm whether suggested conditions should be added/coded."
+                "Review flagged medications, report-level lab findings, and combined multi-report signals; then confirm coding updates."
             ),
             "physician_prompt": (
-                "For each medication and lab flag, confirm diagnosis relevance/status and update the problem list/coding where clinically appropriate."
+                "For each medication, report-level lab flag, and combined trend signal, confirm diagnosis relevance/status and update problem list/coding where appropriate."
             ),
         }
 
