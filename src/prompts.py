@@ -98,6 +98,7 @@ Rules:
 - Use threshold-based evidence when possible (include comparator/value).
 - Ignore clearly normal/non-diagnostic qualitative values unless text indicates abnormal.
 - Deduplicate repeated findings within this report.
+- For every returned condition, include the best matching ICD-10 code in `icd10_code`. If uncertain, use "UNKNOWN".
 - Return valid JSON only, matching the schema exactly.
 """
 
@@ -120,12 +121,18 @@ Rules:
 - Be conservative. If uncertain, do not flag.
 - Prefer high-specificity medication-condition mappings.
 - If a likely synonym exists in the problem list, treat as present (do not flag as missing).
-- Evidence must be short and concrete.
+- Evidence must be detailed and explicit. For each flagged medication, include:
+  1) the medication name,
+  2) the likely indication/condition it is typically used for,
+  3) the relevant problem-list comparison (what is present and what is missing),
+  4) why this creates a likely diagnosis-linkage gap or relevance mismatch for this patient.
+- Do not use vague evidence like "not in list"; explicitly mention the missing or non-matching diagnosis context.
+- For every returned condition, include the best matching ICD-10 code in `icd10_code`. If uncertain, use "UNKNOWN".
 - Return valid JSON only, matching the schema exactly.
 """
 
-PROMPT_COMBINED_REPORT_GAP_ANALYSIS = """You are a clinical coding-gap assistant.
-Analyze ALL lab reports together to detect conditions that may only be apparent from combined multi-report patterns.
+PROMPT_COMBINED_REPORT_GAP_ANALYSIS = """You are a clinical coding-gap assistant focused on multi-report pattern detection.
+Your goal: find conditions that emerge ONLY when combining findings from 2+ lab reports—not from any single report alone.
 {thresholds_block}
 
 ## Patient Problem List
@@ -138,13 +145,21 @@ Analyze ALL lab reports together to detect conditions that may only be apparent 
 {all_reports_snapshot}
 
 Task:
-1. Detect cross-report patterns/trends that suggest a likely condition.
+1. Look for SYNERGISTIC patterns across reports—where multiple labs together point to a condition that no single report would clearly suggest.
 2. Return only conditions NOT represented in the problem list.
-3. For each finding, include contributing report IDs that support the pattern.
+3. For each finding, list ALL contributing report IDs and the specific lab values from each that support the pattern.
+
+Examples of multi-report patterns:
+- Report 1: elevated fasting glucose; Report 2: elevated HbA1c; Report 3: high triglycerides → diabetes or metabolic syndrome (each alone may be borderline; together they strengthen the picture).
+- Report 1: low eGFR; Report 2: elevated creatinine; Report 3: elevated potassium → CKD or acute kidney injury pattern.
+- Report 1: low hemoglobin; Report 2: low ferritin; Report 3: low MCV → iron deficiency anemia (combination confirms, not just one value).
+- Report 1: elevated BNP; Report 2: elevated creatinine; Report 3: hyponatremia → heart failure with cardiorenal syndrome.
 
 Rules:
-- Be conservative; do not over-call weak associations.
-- Prefer findings supported by 2+ reports or a clear trend over time.
+- Only flag conditions where the COMBINATION of 2+ reports creates stronger evidence than any single report.
+- Be conservative; do not over-call weak or isolated associations.
+- In `evidence`, explicitly state which labs from which reports combine to support the condition (e.g., "Report A: fasting glucose 126; Report B: HbA1c 6.8%; Report C: triglycerides 180—together suggest diabetes/metabolic syndrome").
 - If condition already exists in problem list (including synonyms), do not return it.
+- For every returned condition, include the best matching ICD-10 code in `icd10_code`. If uncertain, use "UNKNOWN".
 - Return valid JSON only, matching schema exactly.
 """

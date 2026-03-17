@@ -1,0 +1,76 @@
+{
+  "patient_id": "123455",
+  "medication_to_diagnosis": {
+    "suspected_gaps": [
+      {
+        "medication": "KETOCONAZOLE 2 % SHAMPOO",
+        "implied_condition": "Seborrheic dermatitis",
+        "icd10_code": "L21.9",
+        "evidence": "Ketoconazole shampoo is primarily used to treat fungal skin conditions such as seborrheic dermatitis or tinea versicolor, and severe dandruff. The patient's problem list includes \"Pityriasis simplex,\" which is a distinct condition (Pityriasis alba) not typically treated with ketoconazole. There is no explicit diagnosis of seborrheic dermatitis, tinea versicolor, or severe dandruff in the problem list to justify the use of ketoconazole shampoo.",
+        "in_problem_list": false
+      }
+    ],
+    "summary": "Identified one potential medication-problem list gap requiring follow-up."
+  },
+  "lab_report_to_diagnosis": {
+    "suspected_gaps": [
+      {
+        "lab_report_id": "005009    CBC WITH DIFFERENTIAL/PLATELET",
+        "lab_analyte": "BASO (ABSOLUTE)",
+        "lab_value": "0.0 x10E3/uL",
+        "implied_condition": "Basopenia",
+        "icd10_code": "D72.819",
+        "evidence": "Absolute basophil count 0.0 x10E3/uL, which is below the typical reference range (e.g., 0.01-0.08 x10E3/uL).",
+        "in_problem_list": false
+      },
+      {
+        "lab_report_id": "322000    COMP. METABOLIC PANEL (14)-322000-P",
+        "lab_analyte": "GLUCOSE",
+        "lab_value": "109 mg/dL",
+        "implied_condition": "Prediabetes",
+        "icd10_code": "R73.03",
+        "evidence": "Fasting glucose 100-125 mg/dL indicates prediabetes.",
+        "in_problem_list": false
+      },
+      {
+        "lab_report_id": "90045    CRP, HIGH SENSITIVITY",
+        "lab_analyte": "CRP, HIGH SENSITIVITY",
+        "lab_value": "7.3 mg/L",
+        "implied_condition": "Elevated C-reactive protein",
+        "icd10_code": "R76.0",
+        "evidence": "CRP, HIGH SENSITIVITY: 7.3 mg/L (above normal reference range, typically >3.0 mg/L indicates high risk/significant inflammation)",
+        "in_problem_list": false
+      },
+      {
+        "lab_report_id": "902068    VITAMIN D, 25-HYDROXY D2/D3, LC/MS/MS",
+        "lab_analyte": "VITAMIN D, 25-OH, TOTAL",
+        "lab_value": "15 ng/mL",
+        "implied_condition": "Vitamin D deficiency",
+        "icd10_code": "E55.9",
+        "evidence": "Total Vitamin D 15 ng/mL is below the deficiency threshold of 20 ng/mL.",
+        "in_problem_list": false
+      }
+    ],
+    "summary": "Detected 4 missing diagnosis candidate(s) across 4 lab report(s). Report notes: 005009    CBC WITH DIFFERENTIAL/PLATELET: Suspected basopenia based on absolute basophil count below reference range. | 104750    HEPATITIS PANEL, ACUTE: No abnormal findings or suspected coding gaps detected in this lab report. | 164798    COCCIDIOIDES ABS, IGG/IGM, EIA: No new coding gaps detected based on the provided lab report and patient's problem list. Coccidioides antibody results require specific reference ranges for interpretation, which were not provided. Without these, a conservative approach dictates no abnormal findings can be confidently inferred. | 2337    RHEUMATOID FACTOR: No new coding gaps were detected in this lab report based on the provided patient problem list. The RHEUMATOID FACTOR result of <10 IU/ML is within normal limits. | 2920    ANA SCREEN W/REFLEX TO TITER: No new coding gaps were identified based on the provided lab report and patient's problem list."
+  },
+  "combined_lab_report_to_diagnosis": {
+    "suspected_gaps": [
+      {
+        "implied_condition": "Systemic inflammation",
+        "icd10_code": "R76.9",
+        "evidence": "Report 90045: CRP, HIGH SENSITIVITY 7.3 mg/L (above normal reference range, typically >3.0 mg/L indicates high risk/significant inflammation); Report 3105: ERYTHROCYTE SEDIMENTATION RATE 17 mm/hr (mildly elevated, upper limit of normal often around 15-20 mm/hr). The combination of elevated CRP and ESR provides stronger evidence for a systemic inflammatory process.",
+        "contributing_report_ids": [
+          "90045 CRP, HIGH SENSITIVITY",
+          "3105 ERYTHROCYTE SEDIMENTATION RATE"
+        ],
+        "in_problem_list": false
+      }
+    ],
+    "summary": "Identified a synergistic pattern indicating systemic inflammation based on elevated C-reactive protein and mildly elevated erythrocyte sedimentation rate."
+  },
+  "summary_note_before_huddle": {
+    "context": "Problem list reviewed (10 entries), medications reviewed (4 active), medication gaps detected (1), and lab-report gaps detected (4). Medication-implied conditions: Seborrheic dermatitis. Lab-implied conditions: Basopenia, Prediabetes, Elevated C-reactive protein, Vitamin D deficiency. Combined multi-report conditions: Systemic inflammation.",
+    "suggested_huddle_note_bullet": "Review flagged medications, report-level lab findings, and combined multi-report signals; then confirm coding updates.",
+    "physician_prompt": "For each medication, report-level lab flag, and combined trend signal, confirm diagnosis relevance/status and update problem list/coding where appropriate."
+  }
+}

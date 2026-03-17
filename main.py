@@ -3,12 +3,24 @@
 from pathlib import Path
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 SRC_DIR = Path(__file__).resolve().parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from src.config import DEFAULT_HUDDLE_MODEL, resolve_repo_path
 from src.services.huddle_analyzer import HuddleAnalyzer
+
+
+def _resolve_patient_json_path() -> str:
+    candidates = [resolve_repo_path("patients.json"), resolve_repo_path("patient.json")]
+    for path in candidates:
+        if path.exists():
+            return str(path)
+    return str(candidates[0])
 
 
 def main() -> None:
@@ -20,7 +32,7 @@ def main() -> None:
     enable_combined_lab_analysis = combined_choice not in {"n", "no"}
 
     analyzer = HuddleAnalyzer()
-    patients_json = str(resolve_repo_path("patients.json"))
+    patients_json = _resolve_patient_json_path()
     output_dir = str(resolve_repo_path("."))
 
     try:

@@ -11,6 +11,13 @@ from ..domain.patient import LabReport, LabResult, Patient
 from ..repositories.patient_repository import PatientRepository
 
 
+def _safe_str(val: object) -> str:
+    """Convert value to str, treating NaN/None as empty string (JSON-safe)."""
+    if pd.isna(val):
+        return ""
+    return str(val) if val is not None else ""
+
+
 class PatientDataLoader:
     """Load patient entities from lab orders and optional medication workbook."""
 
@@ -39,7 +46,13 @@ class PatientDataLoader:
             enterprise_id = int(enterprise_id)
             if enterprise_id not in patients:
                 patients[enterprise_id] = Patient(patient_id=enterprise_id)
-            results = [LabResult(row[analyte_col], str(row[value_col])) for _, row in group.iterrows()]
+            results = [
+                LabResult(
+                    _safe_str(row[analyte_col]),
+                    _safe_str(row[value_col]),
+                )
+                for _, row in group.iterrows()
+            ]
             patients[enterprise_id].lab_reports.append(
                 LabReport(lab_report_id=str(lab_detail).strip(), results=results)
             )

@@ -1,0 +1,228 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 2 /Kids [5 0 R 7 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 4218 >>
+stream
+BT
+/F2 18 Tf
+1 0 0 1 50 720 Tm (Patient Huddle Summary) Tj
+/F2 12 Tf
+1 0 0 1 50 696 Tm (Patient ID: 123455) Tj
+/F1 10 Tf
+1 0 0 1 50 680 Tm () Tj
+/F1 10 Tf
+1 0 0 1 50 672 Tm (----------------------------------------) Tj
+/F1 10 Tf
+1 0 0 1 50 660 Tm () Tj
+/F2 14 Tf
+1 0 0 1 50 652 Tm (1. Medication to Diagnosis Gaps) Tj
+/F1 10 Tf
+1 0 0 1 50 634 Tm (Identified one potential medication-problem list gap requiring follow-up.) Tj
+/F1 10 Tf
+1 0 0 1 50 621 Tm () Tj
+/F2 12 Tf
+1 0 0 1 50 613 Tm (1. KETOCONAZOLE 2 % SHAMPOO) Tj
+/F1 10 Tf
+1 0 0 1 50 597 Tm (Implied condition: Seborrheic dermatitis) Tj
+/F1 10 Tf
+1 0 0 1 50 584 Tm (ICD-10: L21.9) Tj
+/F1 10 Tf
+1 0 0 1 50 571 Tm (Evidence: Ketoconazole shampoo is primarily used to treat fungal skin conditions such as) Tj
+/F1 10 Tf
+1 0 0 1 50 558 Tm (seborrheic dermatitis or tinea versicolor, and severe dandruff. The patient's problem list) Tj
+/F1 10 Tf
+1 0 0 1 50 545 Tm (includes "Pityriasis simplex," which is a distinct condition \(Pityriasis alba\) not typically) Tj
+/F1 10 Tf
+1 0 0 1 50 532 Tm (treated with ketoconazole. There is no explicit diagnosis of seborrheic dermatitis, tinea) Tj
+/F1 10 Tf
+1 0 0 1 50 519 Tm (versicolor, or severe dandruff in the problem list to justify the use of ketoconazole shampoo.) Tj
+/F1 10 Tf
+1 0 0 1 50 506 Tm () Tj
+/F1 10 Tf
+1 0 0 1 50 498 Tm (----------------------------------------) Tj
+/F1 10 Tf
+1 0 0 1 50 486 Tm () Tj
+/F2 14 Tf
+1 0 0 1 50 478 Tm (2. Per-Report Lab to Diagnosis Gaps) Tj
+/F1 10 Tf
+1 0 0 1 50 460 Tm (Detected 4 missing diagnosis candidate\(s\) across 4 lab report\(s\). Report notes: 005009 CBC WITH) Tj
+/F1 10 Tf
+1 0 0 1 50 447 Tm (DIFFERENTIAL/PLATELET: Suspected basopenia based on absolute basophil count below reference) Tj
+/F1 10 Tf
+1 0 0 1 50 434 Tm (range. | 104750 HEPATITIS PANEL, ACUTE: No abnormal findings or suspected coding gaps detected) Tj
+/F1 10 Tf
+1 0 0 1 50 421 Tm (in this lab report. | 164798 COCCIDIOIDES ABS, IGG/IGM, EIA: No new coding gaps detected based) Tj
+/F1 10 Tf
+1 0 0 1 50 408 Tm (on the provided lab report and patient's problem list. Coccidioides antibody results require) Tj
+/F1 10 Tf
+1 0 0 1 50 395 Tm (specific reference ranges for interpretation, which were not provided. Without these, a) Tj
+/F1 10 Tf
+1 0 0 1 50 382 Tm (conservative approach dictates no abnormal findings can be confidently inferred. | 2337) Tj
+/F1 10 Tf
+1 0 0 1 50 369 Tm (RHEUMATOID FACTOR: No new coding gaps were detected in this lab report based on the provided) Tj
+/F1 10 Tf
+1 0 0 1 50 356 Tm (patient problem list. The RHEUMATOID FACTOR result of <10 IU/ML is within normal limits. | 2920) Tj
+/F1 10 Tf
+1 0 0 1 50 343 Tm (ANA SCREEN W/REFLEX TO TITER: No new coding gaps were identified based on the provided lab) Tj
+/F1 10 Tf
+1 0 0 1 50 330 Tm (report and patient's problem list.) Tj
+/F1 10 Tf
+1 0 0 1 50 317 Tm () Tj
+/F2 12 Tf
+1 0 0 1 50 309 Tm (1. BASO \(ABSOLUTE\) = 0.0 x10E3/uL) Tj
+/F1 10 Tf
+1 0 0 1 50 293 Tm (Report: 005009    CBC WITH DIFFERENTIAL/PLATELET) Tj
+/F1 10 Tf
+1 0 0 1 50 280 Tm (Implied condition: Basopenia) Tj
+/F1 10 Tf
+1 0 0 1 50 267 Tm (ICD-10: D72.819) Tj
+/F1 10 Tf
+1 0 0 1 50 254 Tm (Evidence: Absolute basophil count 0.0 x10E3/uL, which is below the typical reference range) Tj
+/F1 10 Tf
+1 0 0 1 50 241 Tm (\(e.g., 0.01-0.08 x10E3/uL\).) Tj
+/F1 10 Tf
+1 0 0 1 50 228 Tm () Tj
+/F2 12 Tf
+1 0 0 1 50 220 Tm (2. GLUCOSE = 109 mg/dL) Tj
+/F1 10 Tf
+1 0 0 1 50 204 Tm (Report: 322000    COMP. METABOLIC PANEL \(14\)-322000-P) Tj
+/F1 10 Tf
+1 0 0 1 50 191 Tm (Implied condition: Prediabetes) Tj
+/F1 10 Tf
+1 0 0 1 50 178 Tm (ICD-10: R73.03) Tj
+/F1 10 Tf
+1 0 0 1 50 165 Tm (Evidence: Fasting glucose 100-125 mg/dL indicates prediabetes.) Tj
+/F1 10 Tf
+1 0 0 1 50 152 Tm () Tj
+/F2 12 Tf
+1 0 0 1 50 144 Tm (3. CRP, HIGH SENSITIVITY = 7.3 mg/L) Tj
+/F1 10 Tf
+1 0 0 1 50 128 Tm (Report: 90045    CRP, HIGH SENSITIVITY) Tj
+/F1 10 Tf
+1 0 0 1 50 115 Tm (Implied condition: Elevated C-reactive protein) Tj
+/F1 10 Tf
+1 0 0 1 50 102 Tm (ICD-10: R76.0) Tj
+/F1 10 Tf
+1 0 0 1 50 89 Tm (Evidence: CRP, HIGH SENSITIVITY: 7.3 mg/L \(above normal reference range, typically >3.0 mg/L) Tj
+/F1 10 Tf
+1 0 0 1 50 76 Tm (indicates high risk/significant inflammation\)) Tj
+/F1 10 Tf
+1 0 0 1 50 63 Tm () Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 2933 >>
+stream
+BT
+/F2 12 Tf
+1 0 0 1 50 720 Tm (4. VITAMIN D, 25-OH, TOTAL = 15 ng/mL) Tj
+/F1 10 Tf
+1 0 0 1 50 704 Tm (Report: 902068    VITAMIN D, 25-HYDROXY D2/D3, LC/MS/MS) Tj
+/F1 10 Tf
+1 0 0 1 50 691 Tm (Implied condition: Vitamin D deficiency) Tj
+/F1 10 Tf
+1 0 0 1 50 678 Tm (ICD-10: E55.9) Tj
+/F1 10 Tf
+1 0 0 1 50 665 Tm (Evidence: Total Vitamin D 15 ng/mL is below the deficiency threshold of 20 ng/mL.) Tj
+/F1 10 Tf
+1 0 0 1 50 652 Tm () Tj
+/F1 10 Tf
+1 0 0 1 50 644 Tm (----------------------------------------) Tj
+/F1 10 Tf
+1 0 0 1 50 632 Tm () Tj
+/F2 14 Tf
+1 0 0 1 50 624 Tm (3. Combined Multi-Report Signals) Tj
+/F1 10 Tf
+1 0 0 1 50 606 Tm (Identified a synergistic pattern indicating systemic inflammation based on elevated C-reactive) Tj
+/F1 10 Tf
+1 0 0 1 50 593 Tm (protein and mildly elevated erythrocyte sedimentation rate.) Tj
+/F1 10 Tf
+1 0 0 1 50 580 Tm () Tj
+/F2 12 Tf
+1 0 0 1 50 572 Tm (1. Systemic inflammation) Tj
+/F1 10 Tf
+1 0 0 1 50 556 Tm (ICD-10: R76.9) Tj
+/F1 10 Tf
+1 0 0 1 50 543 Tm (Contributing reports: 90045 CRP, HIGH SENSITIVITY, 3105 ERYTHROCYTE SEDIMENTATION RATE) Tj
+/F1 10 Tf
+1 0 0 1 50 530 Tm (Evidence: Report 90045: CRP, HIGH SENSITIVITY 7.3 mg/L \(above normal reference range, typically) Tj
+/F1 10 Tf
+1 0 0 1 50 517 Tm (>3.0 mg/L indicates high risk/significant inflammation\); Report 3105: ERYTHROCYTE SEDIMENTATION) Tj
+/F1 10 Tf
+1 0 0 1 50 504 Tm (RATE 17 mm/hr \(mildly elevated, upper limit of normal often around 15-20 mm/hr\). The) Tj
+/F1 10 Tf
+1 0 0 1 50 491 Tm (combination of elevated CRP and ESR provides stronger evidence for a systemic inflammatory) Tj
+/F1 10 Tf
+1 0 0 1 50 478 Tm (process.) Tj
+/F1 10 Tf
+1 0 0 1 50 465 Tm () Tj
+/F1 10 Tf
+1 0 0 1 50 457 Tm (----------------------------------------) Tj
+/F1 10 Tf
+1 0 0 1 50 445 Tm () Tj
+/F2 14 Tf
+1 0 0 1 50 437 Tm (4. Suggested Huddle Note) Tj
+/F2 12 Tf
+1 0 0 1 50 419 Tm (Context) Tj
+/F1 10 Tf
+1 0 0 1 50 403 Tm (Problem list reviewed \(10 entries\), medications reviewed \(4 active\), medication gaps detected) Tj
+/F1 10 Tf
+1 0 0 1 50 390 Tm (\(1\), and lab-report gaps detected \(4\). Medication-implied conditions: Seborrheic dermatitis.) Tj
+/F1 10 Tf
+1 0 0 1 50 377 Tm (Lab-implied conditions: Basopenia, Prediabetes, Elevated C-reactive protein, Vitamin D) Tj
+/F1 10 Tf
+1 0 0 1 50 364 Tm (deficiency. Combined multi-report conditions: Systemic inflammation.) Tj
+/F1 10 Tf
+1 0 0 1 50 351 Tm () Tj
+/F2 12 Tf
+1 0 0 1 50 343 Tm (Suggested bullet) Tj
+/F1 10 Tf
+1 0 0 1 50 327 Tm (Review flagged medications, report-level lab findings, and combined multi-report signals; then) Tj
+/F1 10 Tf
+1 0 0 1 50 314 Tm (confirm coding updates.) Tj
+/F1 10 Tf
+1 0 0 1 50 301 Tm () Tj
+/F2 12 Tf
+1 0 0 1 50 293 Tm (Physician prompt) Tj
+/F1 10 Tf
+1 0 0 1 50 277 Tm (For each medication, report-level lab flag, and combined trend signal, confirm diagnosis) Tj
+/F1 10 Tf
+1 0 0 1 50 264 Tm (relevance/status and update problem list/coding where appropriate.) Tj
+ET
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000272 00000 n 
+0000000408 00000 n 
+0000004678 00000 n 
+0000004814 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+7799
+%%EOF

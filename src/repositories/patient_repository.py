@@ -32,7 +32,10 @@ class PatientRepository:
             lab_reports = [
                 {
                     "lab_report_id": report.lab_report_id,
-                    "results": [{"labanalyte": r.labanalyte, "labvalue": r.labvalue} for r in report.results],
+                    "results": [
+                        cls._sanitize_for_json({"labanalyte": r.labanalyte, "labvalue": r.labvalue})
+                        for r in report.results
+                    ],
                 }
                 for report in patient.lab_reports
             ]
@@ -51,7 +54,7 @@ class PatientRepository:
     @classmethod
     def _sanitize_for_json(cls, obj: Any) -> Any:
         if hasattr(obj, "item"):  # numpy scalar
-            return obj.item()
+            return cls._sanitize_for_json(obj.item())  # recurse to handle NaN
         if isinstance(obj, (int, float)) and (obj != obj or obj == float("inf") or obj == float("-inf")):
             return None
         if isinstance(obj, dict):
