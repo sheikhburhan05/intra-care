@@ -1,0 +1,29 @@
+{
+  "patient_id": "123467",
+  "medication_to_diagnosis": {
+    "suspected_gaps": [
+      {
+        "medication": "LOSARTAN 50 MG TABLET",
+        "implied_condition": "Hypertension",
+        "icd10_code": "I10",
+        "evidence": "Losartan is an angiotensin II receptor blocker (ARB) primarily used to treat hypertension. The patient's problem list is empty, indicating that hypertension is not documented."
+      },
+      {
+        "medication": "SIMVASTATIN 40 MG TABLET",
+        "implied_condition": "Hyperlipidemia",
+        "icd10_code": "E78.5",
+        "evidence": "Simvastatin is an HMG-CoA reductase inhibitor (statin) primarily used to treat hyperlipidemia. The patient's problem list is empty, indicating that hyperlipidemia is not documented."
+      }
+    ],
+    "summary": "LOSARTAN 50 MG TABLET implies Hypertension (I10) not present in problem list; SIMVASTATIN 40 MG TABLET implies Hyperlipidemia (E78.5) not present in problem list."
+  },
+  "lab_report_to_diagnosis": {
+    "suspected_gaps": [],
+    "narrative_summary": "No significant lab abnormalities identified across all reports."
+  },
+  "combined_lab_report_to_diagnosis": {
+    "suspected_gaps": [],
+    "summary": "No synergistic patterns were identified across multiple lab reports that suggest a new condition not evident from single reports alone. All individual lab values and combinations reviewed appear to be within normal clinical reference ranges."
+  },
+  "doctor_summary": "\u2022 Medication: Patient is prescribed LOSARTAN 50 MG TABLET, but Hypertension (I10) is not documented in the problem list; please confirm and document this diagnosis, or review if the medication is still appropriate.\n\u2022 Medication: Patient is prescribed SIMVASTATIN 40 MG TABLET, but Hyperlipidemia (E78.5) is not documented in the problem list; please confirm and document this diagnosis, or review if the medication is still appropriate.\n\u2022 Action: Please confirm and document Hypertension (I10) and Hyperlipidemia (E78.5) in the problem list, or reassess medication appropriateness."
+}

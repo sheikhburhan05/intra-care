@@ -1,0 +1,16 @@
+{
+  "patient_id": "123472",
+  "medication_to_diagnosis": {
+    "suspected_gaps": [],
+    "summary": "No medication-diagnosis gaps identified."
+  },
+  "lab_report_to_diagnosis": {
+    "suspected_gaps": [],
+    "narrative_summary": ""
+  },
+  "combined_lab_report_to_diagnosis": {
+    "suspected_gaps": [],
+    "summary": "Combined analysis skipped."
+  },
+  "doctor_summary": ""
+}

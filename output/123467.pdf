@@ -1,0 +1,194 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 1 /Kids [5 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 3378 >>
+stream
+BT
+/F2 18 Tf
+1 0 0 1 50 720 Tm
+/F2 18 Tf
+(Patient Huddle Summary) Tj
+/F2 12 Tf
+1 0 0 1 50 696 Tm
+/F2 12 Tf
+(Patient ID: 123467) Tj
+/F1 10 Tf
+1 0 0 1 50 672 Tm
+/F1 10 Tf
+(----------------------------------------) Tj
+/F2 14 Tf
+1 0 0 1 50 652 Tm
+/F2 14 Tf
+(Medication to Diagnosis:) Tj
+/F2 12 Tf
+1 0 0 1 50 626 Tm
+/F2 12 Tf
+(Summary of findings:) Tj
+/F1 10 Tf
+1 0 0 1 50 610 Tm
+/F1 10 Tf
+(LOSARTAN 50 MG TABLET implies Hypertension \(I10\) not present in problem list; SIMVASTATIN 40 MG) Tj
+/F1 10 Tf
+1 0 0 1 50 597 Tm
+/F1 10 Tf
+(TABLET implies Hyperlipidemia \(E78.5\) not present in problem list.) Tj
+/F2 12 Tf
+1 0 0 1 50 576 Tm
+/F2 12 Tf
+(Finding 1:) Tj
+/F2 10 Tf
+1 0 0 1 50 560 Tm
+/F2 10 Tf
+(Medication:  ) Tj
+/F1 10 Tf
+(LOSARTAN 50 MG TABLET) Tj
+/F2 10 Tf
+1 0 0 1 50 547 Tm
+/F2 10 Tf
+(Missing diagnosis:  ) Tj
+/F1 10 Tf
+(Hypertension \(I10\)) Tj
+/F2 10 Tf
+1 0 0 1 50 534 Tm
+/F2 10 Tf
+(Evidence:  ) Tj
+/F1 10 Tf
+(Losartan is an angiotensin II receptor blocker \(ARB\) primarily used to treat) Tj
+/F2 10 Tf
+1 0 0 1 50 521 Tm
+/F2 10 Tf
+(           ) Tj
+/F1 10 Tf
+(hypertension. The patient's problem list is empty, indicating that hypertension is) Tj
+/F2 10 Tf
+1 0 0 1 50 508 Tm
+/F2 10 Tf
+(           ) Tj
+/F1 10 Tf
+(not documented.) Tj
+/F2 12 Tf
+1 0 0 1 50 487 Tm
+/F2 12 Tf
+(Finding 2:) Tj
+/F2 10 Tf
+1 0 0 1 50 471 Tm
+/F2 10 Tf
+(Medication:  ) Tj
+/F1 10 Tf
+(SIMVASTATIN 40 MG TABLET) Tj
+/F2 10 Tf
+1 0 0 1 50 458 Tm
+/F2 10 Tf
+(Missing diagnosis:  ) Tj
+/F1 10 Tf
+(Hyperlipidemia \(E78.5\)) Tj
+/F2 10 Tf
+1 0 0 1 50 445 Tm
+/F2 10 Tf
+(Evidence:  ) Tj
+/F1 10 Tf
+(Simvastatin is an HMG-CoA reductase inhibitor \(statin\) primarily used to treat) Tj
+/F2 10 Tf
+1 0 0 1 50 432 Tm
+/F2 10 Tf
+(           ) Tj
+/F1 10 Tf
+(hyperlipidemia. The patient's problem list is empty, indicating that hyperlipidemia) Tj
+/F2 10 Tf
+1 0 0 1 50 419 Tm
+/F2 10 Tf
+(           ) Tj
+/F1 10 Tf
+(is not documented.) Tj
+/F1 10 Tf
+1 0 0 1 50 398 Tm
+/F1 10 Tf
+(----------------------------------------) Tj
+/F2 14 Tf
+1 0 0 1 50 378 Tm
+/F2 14 Tf
+(Lab Report Analysis:) Tj
+/F1 10 Tf
+1 0 0 1 50 352 Tm
+/F1 10 Tf
+(No abnormal lab findings identified.) Tj
+/F2 12 Tf
+1 0 0 1 50 339 Tm
+/F2 12 Tf
+(Summary of Lab Report findings:) Tj
+/F1 10 Tf
+1 0 0 1 50 323 Tm
+/F1 10 Tf
+(No significant lab abnormalities identified across all reports.) Tj
+/F1 10 Tf
+1 0 0 1 50 302 Tm
+/F1 10 Tf
+(----------------------------------------) Tj
+/F2 14 Tf
+1 0 0 1 50 282 Tm
+/F2 14 Tf
+(Pre-Huddle Summary:) Tj
+/F1 10 Tf
+1 0 0 1 50 256 Tm
+/F1 10 Tf
+(- Medication: Patient is prescribed LOSARTAN 50 MG TABLET, but Hypertension \(I10\) is not) Tj
+/F1 10 Tf
+1 0 0 1 50 243 Tm
+/F1 10 Tf
+(documented in the problem list; please confirm and document this diagnosis, or review if the) Tj
+/F1 10 Tf
+1 0 0 1 50 230 Tm
+/F1 10 Tf
+(medication is still appropriate.) Tj
+/F1 10 Tf
+1 0 0 1 50 209 Tm
+/F1 10 Tf
+(- Medication: Patient is prescribed SIMVASTATIN 40 MG TABLET, but Hyperlipidemia \(E78.5\) is not) Tj
+/F1 10 Tf
+1 0 0 1 50 196 Tm
+/F1 10 Tf
+(documented in the problem list; please confirm and document this diagnosis, or review if the) Tj
+/F1 10 Tf
+1 0 0 1 50 183 Tm
+/F1 10 Tf
+(medication is still appropriate.) Tj
+/F1 10 Tf
+1 0 0 1 50 162 Tm
+/F1 10 Tf
+(- Action: Please confirm and document Hypertension \(I10\) and Hyperlipidemia \(E78.5\) in the) Tj
+/F1 10 Tf
+1 0 0 1 50 149 Tm
+/F1 10 Tf
+(problem list, or reassess medication appropriateness.) Tj
+ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000000402 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3832
+%%EOF

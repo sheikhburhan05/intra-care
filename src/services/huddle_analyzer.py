@@ -5,25 +5,25 @@ from __future__ import annotations
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import Any, Callable, Optional, Type
 
+from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
-# from langchain_anthropic import ChatAnthropic  # Anthropic Sonnet kept as commented reference.
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
-from ..config import DEFAULT_HUDDLE_MODEL, FALLBACK_HUDDLE_MODEL, resolve_repo_path
+from ..config import DEFAULT_HUDDLE_MODEL, FALLBACK_HUDDLE_MODEL, output_dir as get_output_dir, resolve_repo_path
 from ..domain.huddle_output import CombinedLabGap, LabGap, MedicationGap
 from ..prompts import (
     PROMPT_COMBINED_REPORT_GAP_ANALYSIS,
     PROMPT_MEDICATION_GAP_ANALYSIS,
     PROMPT_SINGLE_REPORT_GAP_ANALYSIS,
-    PROMPT_THRESHOLD_SEARCH,
-    THRESHOLDS_BLOCK_FALLBACK,
-    THRESHOLDS_BLOCK_WITH_RESULTS,
 )
+from ..summary_prompts import PROMPT_DOCTOR_SUMMARY, PROMPT_LAB_NARRATIVE_SUMMARY
+from ..threshold_prompts import THRESHOLDS_BLOCK_FALLBACK
 from ..repositories.patient_repository import PatientRepository
 from .huddle_pdf_exporter import HuddlePdfExporter
 
@@ -58,13 +58,17 @@ class HuddleAnalyzer:
         output_dir: Optional[str] = None,
         model: str = DEFAULT_HUDDLE_MODEL,
         use_web_search: bool = True,
-        use_llm_tools: bool = True,
+        enable_medication_analysis: bool = True,
+        enable_per_report_lab_analysis: bool = True,
         enable_combined_lab_analysis: bool = True,
+        enable_doctor_summary: bool = True,
+        progress_callback: Optional[Callable[[str], None]] = None,
     ) -> dict[str, Any]:
         json_path = resolve_repo_path(patients_json_path)
-        out_dir = Path(output_dir) if output_dir else json_path.parent
-        if not out_dir.is_absolute():
-            out_dir = resolve_repo_path(out_dir)
+        if output_dir:
+            out_dir = Path(output_dir) if Path(output_dir).is_absolute() else resolve_repo_path(output_dir)
+        else:
+            out_dir = get_output_dir()
 
         patients = self.repository.load_patients_from_json(json_path)
         pid_key = str(patient_id)
@@ -75,105 +79,158 @@ class HuddleAnalyzer:
         problem_list = self._extract_problems(patient)
         medications = self._extract_medications(patient)
         lab_reports = patient.get("lab_reports", [])
-        labs = self._extract_labs(patient)
-        if use_web_search:
-            print("LLM using search tool to fetch clinical lab thresholds...")
-        thresholds_context = (
-            self._fetch_clinical_thresholds(labs, model=model, use_llm_tools=use_llm_tools) if use_web_search else ""
-        )
-        thresholds_block = (
-            THRESHOLDS_BLOCK_WITH_RESULTS.format(thresholds_context=thresholds_context)
-            if thresholds_context
-            else THRESHOLDS_BLOCK_FALLBACK
-        )
+
+        # Base thresholds block — each report extends this with its own targeted search.
+        thresholds_block = THRESHOLDS_BLOCK_FALLBACK
+
         llm = self._build_llm(model)
         fallback_llm = self._build_llm(FALLBACK_HUDDLE_MODEL)
-        report_llm = llm.with_structured_output(SingleReportLabOutput)
-        fallback_report_llm = fallback_llm.with_structured_output(SingleReportLabOutput)
-        medication_llm = llm.with_structured_output(MedicationAnalysisOutput)
-        fallback_medication_llm = fallback_llm.with_structured_output(MedicationAnalysisOutput)
-        combined_llm = llm.with_structured_output(CombinedLabAnalysisOutput)
-        fallback_combined_llm = fallback_llm.with_structured_output(CombinedLabAnalysisOutput)
 
-        medication_prompt = PROMPT_MEDICATION_GAP_ANALYSIS.format(
-            problem_list_json=json.dumps(problem_list, indent=2),
-            medications_json=json.dumps(medications, indent=2),
-        )
-        medication_result = self._invoke_with_fallback(
-            primary=medication_llm,
-            fallback=fallback_medication_llm,
-            fallback_base_llm=fallback_llm,
-            messages=[HumanMessage(content=medication_prompt)],
-            operation_name="medication gap analysis",
-            schema_cls=MedicationAnalysisOutput,
-        )
-        medication_gaps = [gap.model_dump() for gap in medication_result.suspected_gaps if not gap.in_problem_list]
+        def _notify(msg: str) -> None:
+            print(msg)
+            if progress_callback:
+                progress_callback(msg)
 
-        all_report_gaps: list[dict[str, Any]] = []
-        report_summaries: list[str] = []
-        for report in lab_reports:
-            report_id = str(report.get("lab_report_id", "")).strip()
-            report_results = self._format_report_results(report)
-            if not report_results:
-                continue
-            report_prompt = PROMPT_SINGLE_REPORT_GAP_ANALYSIS.format(
+        # ── Phase 1 (parallel): medication + all per-report lab analyses ──
+        medication_gaps: list[dict[str, Any]] = []
+        medication_summary = "Medication analysis skipped."
+        deduped_report_gaps: list[dict[str, Any]] = []
+
+        # Build the LLM variants needed for phase 1
+        medication_llm = llm.with_structured_output(MedicationAnalysisOutput) if enable_medication_analysis else None
+        fallback_medication_llm = fallback_llm.with_structured_output(MedicationAnalysisOutput) if enable_medication_analysis else None
+        report_llm = llm.with_structured_output(SingleReportLabOutput) if enable_per_report_lab_analysis else None
+        fallback_report_llm = fallback_llm.with_structured_output(SingleReportLabOutput) if enable_per_report_lab_analysis else None
+
+        # Count valid reports upfront for progress display
+        valid_reports = [
+            r for r in lab_reports if self._format_report_results(r)
+        ] if enable_per_report_lab_analysis else []
+        total_reports = len(valid_reports)
+
+        # Collect all tasks: one future per analysis unit
+        futures: dict[Any, str] = {}  # future → task label
+        max_workers = min(1 + len(valid_reports), 12)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+
+            # Submit medication analysis
+            if enable_medication_analysis:
+                medication_prompt = PROMPT_MEDICATION_GAP_ANALYSIS.format(
+                    problem_list_json=json.dumps(problem_list, indent=2),
+                    medications_json=json.dumps(medications, indent=2),
+                )
+                futures[pool.submit(
+                    self._invoke_with_fallback,
+                    primary=medication_llm,
+                    fallback=fallback_medication_llm,
+                    fallback_base_llm=fallback_llm,
+                    messages=[HumanMessage(content=medication_prompt)],
+                    operation_name="medication gap analysis",
+                    schema_cls=MedicationAnalysisOutput,
+                )] = "__medication__"
+
+            # Submit one future per lab report (each thread: search ranges → LLM)
+            for report in valid_reports:
+                report_id = str(report.get("lab_report_id", "")).strip()
+                futures[pool.submit(
+                    self._analyze_single_report,
+                    report=report,
+                    report_id=report_id,
+                    problem_list=problem_list,
+                    report_llm=report_llm,
+                    fallback_report_llm=fallback_report_llm,
+                    fallback_llm=fallback_llm,
+                    global_thresholds_block=thresholds_block,
+                    use_web_search=use_web_search,
+                )] = report_id or "unknown"
+
+            # Collect results as they complete — runs in main thread, safe to call progress_callback
+            all_report_gaps: list[dict[str, Any]] = []
+            reports_done = 0
+            for future in as_completed(futures):
+                label = futures[future]
+                result = future.result()  # re-raises any exception from the thread
+                if label == "__medication__":
+                    medication_gaps = [gap.model_dump() for gap in result.suspected_gaps]
+                    medication_summary = result.summary or self._build_medication_summary(medication_gaps)
+                    gap_count = len(medication_gaps)
+                    _notify(f"✅ Medication Gap Analysis — {gap_count} gap(s) found")
+                else:
+                    reports_done += 1
+                    for gap in result.suspected_gaps:
+                        gap_dict = gap.model_dump()
+                        gap_dict["lab_report_id"] = label or gap_dict.get("lab_report_id", "")
+                        all_report_gaps.append(gap_dict)
+                    short_name = self._short_report_name(label)
+                    gap_count = len(result.suspected_gaps)
+                    _notify(
+                        f"✅ Report {reports_done}/{total_reports}: {short_name}"
+                        f" — {gap_count} gap(s) found"
+                    )
+
+        if enable_per_report_lab_analysis:
+            deduped_report_gaps = self._dedupe_lab_gaps(all_report_gaps)
+
+        # ── Combined multi-report lab analysis ────────────────────────────
+        combined_gaps: list[dict[str, Any]] = []
+        combined_summary = "Combined analysis skipped."
+        if enable_combined_lab_analysis or enable_per_report_lab_analysis:
+            _notify("⏳ Running combined multi-report analysis…")
+            combined_llm = llm.with_structured_output(CombinedLabAnalysisOutput)
+            fallback_combined_llm = fallback_llm.with_structured_output(CombinedLabAnalysisOutput)
+            combined_gaps, combined_summary = self._run_combined_lab_analysis(
+                combined_llm=combined_llm,
+                fallback_combined_llm=fallback_combined_llm,
+                enable_combined_lab_analysis=enable_combined_lab_analysis,
+                lab_reports=lab_reports,
+                problem_list=problem_list,
+                deduped_report_gaps=deduped_report_gaps,
                 thresholds_block=thresholds_block,
-                problem_list_json=json.dumps(problem_list, indent=2),
-                report_id=report_id or "unknown",
-                report_results=report_results,
             )
-            report_result = self._invoke_with_fallback(
-                primary=report_llm,
-                fallback=fallback_report_llm,
-                fallback_base_llm=fallback_llm,
-                messages=[HumanMessage(content=report_prompt)],
-                operation_name=f"per-report lab analysis [{report_id or 'unknown'}]",
-                schema_cls=SingleReportLabOutput,
-            )
-            report_summaries.append(f"{report_id or 'unknown'}: {report_result.summary}")
-            for gap in report_result.suspected_gaps:
-                gap_dict = gap.model_dump()
-                gap_dict["lab_report_id"] = report_id or gap_dict.get("lab_report_id", "")
-                gap_dict["in_problem_list"] = bool(gap_dict.get("in_problem_list", False))
-                if gap_dict["in_problem_list"]:
-                    continue
-                all_report_gaps.append(gap_dict)
+            _notify(f"✅ Combined analysis — {len(combined_gaps)} pattern(s) found")
 
-        deduped_report_gaps = self._dedupe_lab_gaps(all_report_gaps)
-        lab_summary = self._build_lab_summary(deduped_report_gaps, report_summaries)
-        combined_gaps, combined_summary = self._run_combined_lab_analysis(
-            combined_llm=combined_llm,
-            fallback_combined_llm=fallback_combined_llm,
-            enable_combined_lab_analysis=enable_combined_lab_analysis,
-            lab_reports=lab_reports,
-            problem_list=problem_list,
-            deduped_report_gaps=deduped_report_gaps,
-            thresholds_block=thresholds_block,
-        )
-        summary_note = self._build_summary_note(
-            problem_list=problem_list,
-            medications=medications,
-            medication_gaps=medication_gaps,
-            deduped_report_gaps=deduped_report_gaps,
-            combined_gaps=combined_gaps,
-        )
+        # ── Lab narrative summary ─────────────────────────────────────────
+        lab_narrative_summary = ""
+        if enable_per_report_lab_analysis or enable_combined_lab_analysis:
+            _notify("⏳ Generating lab narrative summary…")
+            lab_narrative_summary = self._generate_lab_narrative_summary(
+                llm=llm,
+                fallback_llm=fallback_llm,
+                deduped_report_gaps=deduped_report_gaps,
+                combined_gaps=combined_gaps,
+                problem_list=problem_list,
+            )
+            _notify("✅ Lab narrative summary complete")
+
+        # ── Doctor pre-huddle summary ─────────────────────────────────────
+        doctor_summary = ""
+        if enable_doctor_summary:
+            _notify("⏳ Generating doctor pre-huddle summary…")
+            doctor_summary = self._generate_doctor_summary(
+                llm=llm,
+                fallback_llm=fallback_llm,
+                medication_gaps=medication_gaps,
+                deduped_report_gaps=deduped_report_gaps,
+                combined_gaps=combined_gaps,
+            )
+            _notify("✅ Doctor pre-huddle summary complete")
 
         output = {
             "patient_id": patient_id,
             "medication_to_diagnosis": {
                 "suspected_gaps": medication_gaps,
-                "summary": medication_result.summary
-                or self._build_medication_summary(medication_gaps),
+                "summary": medication_summary,
             },
             "lab_report_to_diagnosis": {
                 "suspected_gaps": deduped_report_gaps,
-                "summary": lab_summary,
+                "narrative_summary": lab_narrative_summary,
             },
             "combined_lab_report_to_diagnosis": {
                 "suspected_gaps": combined_gaps,
                 "summary": combined_summary,
             },
-            "summary_note_before_huddle": summary_note,
+            "doctor_summary": doctor_summary,
         }
 
         os.makedirs(out_dir, exist_ok=True)
@@ -186,6 +243,124 @@ class HuddleAnalyzer:
         self.pdf_exporter.export(patient_id=pid_key, analysis=output, output_path=pdf_path)
         print(f"Saved huddle PDF to {pdf_path}")
         return output
+
+    @staticmethod
+    def _short_report_name(report_id: str, max_len: int = 40) -> str:
+        """Return a concise display name from a raw lab report ID string.
+
+        IDs often look like '005009    CBC WITH DIFFERENTIAL/PLATELET'.
+        We strip the leading code and return only the descriptive part.
+        """
+        parts = re.split(r"\s{2,}", report_id.strip(), maxsplit=1)
+        name = parts[-1] if len(parts) > 1 else report_id
+        return name[:max_len] + ("…" if len(name) > max_len else "")
+
+    def _fetch_report_thresholds(self, report: dict[str, Any]) -> str:
+        """Search DuckDuckGo for reference ranges of the specific analytes in this report.
+
+        Runs inside a worker thread — results are appended to the per-report prompt.
+        """
+        report_id = str(report.get("lab_report_id", "unknown")).strip()
+        print(f"\n[DDG] _fetch_report_thresholds called for report_id={report_id!r}")
+        try:
+            print("[DDG] Importing DuckDuckGoSearchRun …")
+            from langchain_community.tools import DuckDuckGoSearchRun
+            print("[DDG] Import OK")
+
+            raw_results = report.get("results", [])
+            print(f"[DDG] report has {len(raw_results)} result rows")
+
+            analytes = [
+                str(r.get("labanalyte", "")).strip()
+                for r in raw_results
+                if r.get("labanalyte")
+            ][:10]
+
+            print(f"[DDG] analytes extracted ({len(analytes)}): {analytes}")
+
+            if not analytes:
+                print("[DDG] No analytes found — skipping search, returning empty string")
+                return ""
+
+            report_name = self._short_report_name(
+                str(report.get("lab_report_id", "")).strip(), max_len=60
+            )
+            analyte_str = ", ".join(analytes[:6])
+            query = f"{report_name} {analyte_str} clinical reference range normal values"
+            print(f"[DDG] Search query: {query!r}")
+
+            search = DuckDuckGoSearchRun()
+            self._log_debug(
+                "tool.ddg.per_report_threshold",
+                {"input": {"query": query}, "output": {}},
+            )
+            print("[DDG] Invoking DuckDuckGo search …")
+            result = search.invoke(query)
+            print(f"[DDG] Search returned {len(result) if result else 0} chars")
+
+            if result and len(result) > 50:
+                self._log_debug(
+                    "tool.ddg.per_report_threshold",
+                    {"input": {"query": query}, "output": {"output_preview": result[:600]}},
+                )
+                header = f"Reference ranges retrieved for: {analyte_str}"
+                print(f"[DDG] Success — returning {len(result[:2000])} chars of context")
+                return f"{header}\n{result[:2000]}"
+
+            print("[DDG] Result too short or empty — returning empty string")
+            return ""
+        except Exception as exc:  # noqa: BLE001
+            print(f"[DDG] Exception in _fetch_report_thresholds: {type(exc).__name__}: {exc}")
+            return ""
+
+    def _analyze_single_report(
+        self,
+        report: dict[str, Any],
+        report_id: str,
+        problem_list: list[str],
+        report_llm: Any,
+        fallback_report_llm: Any,
+        fallback_llm: Any,
+        global_thresholds_block: str,
+        use_web_search: bool,
+    ) -> Any:
+        """Fetch targeted reference ranges for this report then invoke the LLM.
+
+        Designed to run inside a ThreadPoolExecutor worker thread.
+        """
+        report_results = self._format_report_results(report)
+
+        # Build the thresholds block: global + report-specific search results
+        thresholds_block = global_thresholds_block
+        print(f"\n[DDG] _analyze_single_report: report_id={report_id!r}, use_web_search={use_web_search}")
+        if use_web_search:
+            print(f"[DDG] Web search enabled — calling _fetch_report_thresholds for {report_id!r}")
+            report_ranges = self._fetch_report_thresholds(report)
+            if report_ranges:
+                print(f"[DDG] Appending {len(report_ranges)} chars of report-specific ranges to prompt")
+                thresholds_block = (
+                    global_thresholds_block.rstrip()
+                    + f"\n\n## Report-Specific Reference Ranges (retrieved via search)\n{report_ranges}"
+                )
+            else:
+                print(f"[DDG] No report-specific ranges returned — using base thresholds only")
+        else:
+            print("[DDG] Web search disabled — using base thresholds only")
+
+        report_prompt = PROMPT_SINGLE_REPORT_GAP_ANALYSIS.format(
+            thresholds_block=thresholds_block,
+            problem_list_json=json.dumps(problem_list, indent=2),
+            report_id=report_id or "unknown",
+            report_results=report_results,
+        )
+        return self._invoke_with_fallback(
+            primary=report_llm,
+            fallback=fallback_report_llm,
+            fallback_base_llm=fallback_llm,
+            messages=[HumanMessage(content=report_prompt)],
+            operation_name=f"per-report lab analysis [{report_id or 'unknown'}]",
+            schema_cls=SingleReportLabOutput,
+        )
 
     @staticmethod
     def _format_report_results(report: dict[str, Any]) -> str:
@@ -214,29 +389,84 @@ class HuddleAnalyzer:
             deduped.append(gap)
         return deduped
 
-    @staticmethod
-    def _build_lab_summary(deduped_report_gaps: list[dict[str, Any]], report_summaries: list[str]) -> str:
-        if not deduped_report_gaps:
-            return "No clear missing diagnosis candidates found from per-report lab analysis."
-        report_count = len({g.get("lab_report_id", "") for g in deduped_report_gaps})
-        gap_count = len(deduped_report_gaps)
-        return (
-            f"Detected {gap_count} missing diagnosis candidate(s) "
-            f"across {report_count} lab report(s). "
-            f"Report notes: {' | '.join(report_summaries[:5])}"
-        )
 
     @staticmethod
     def _build_medication_summary(medication_gaps: list[dict[str, Any]]) -> str:
         if not medication_gaps:
-            return "No clear medication-to-diagnosis mismatches identified."
-        return f"Detected {len(medication_gaps)} medication item(s) requiring diagnosis linkage review."
+            return "No medication-diagnosis gaps identified."
+        parts = [
+            f"{gap.get('medication', 'Unknown')} implies {gap.get('implied_condition', 'unknown condition')}"
+            f" ({gap.get('icd10_code', 'UNKNOWN')}) not present in problem list"
+            for gap in medication_gaps
+        ]
+        return "; ".join(parts) + "."
 
     @staticmethod
     def _build_combined_lab_summary(combined_gaps: list[dict[str, Any]]) -> str:
         if not combined_gaps:
             return "No additional combined multi-report diagnosis gaps identified."
         return f"Detected {len(combined_gaps)} combined multi-report diagnosis gap(s)."
+
+    def _generate_lab_narrative_summary(
+        self,
+        llm: Any,
+        fallback_llm: Any,
+        deduped_report_gaps: list[dict[str, Any]],
+        combined_gaps: list[dict[str, Any]],
+        problem_list: list[str],
+    ) -> str:
+        if not deduped_report_gaps and not combined_gaps:
+            return "No significant lab abnormalities identified across all reports."
+        prompt = PROMPT_LAB_NARRATIVE_SUMMARY.format(
+            problem_list_json=json.dumps(problem_list, indent=2),
+            lab_gaps_json=json.dumps(deduped_report_gaps, indent=2),
+            combined_gaps_json=json.dumps(combined_gaps, indent=2),
+        )
+        try:
+            response = self._invoke_with_fallback(
+                primary=llm,
+                fallback=fallback_llm,
+                fallback_base_llm=fallback_llm,
+                messages=[HumanMessage(content=prompt)],
+                operation_name="lab narrative summary",
+            )
+            return getattr(response, "content", str(response)).strip()
+        except Exception:
+            return self._build_combined_lab_summary(combined_gaps)
+
+    def _generate_doctor_summary(
+        self,
+        llm: Any,
+        fallback_llm: Any,
+        medication_gaps: list[dict[str, Any]],
+        deduped_report_gaps: list[dict[str, Any]],
+        combined_gaps: list[dict[str, Any]],
+    ) -> str:
+        all_lab_gaps = deduped_report_gaps + combined_gaps
+        if not medication_gaps and not all_lab_gaps:
+            return "• No gaps identified from medication or lab review."
+        prompt = PROMPT_DOCTOR_SUMMARY.format(
+            medication_gaps_json=json.dumps(medication_gaps, indent=2),
+            lab_gaps_json=json.dumps(all_lab_gaps, indent=2),
+        )
+        try:
+            response = self._invoke_with_fallback(
+                primary=llm,
+                fallback=fallback_llm,
+                fallback_base_llm=fallback_llm,
+                messages=[HumanMessage(content=prompt)],
+                operation_name="doctor summary",
+            )
+            return getattr(response, "content", str(response)).strip()
+        except Exception:
+            lines = [
+                f"• Medication: {g.get('medication', '?')} is prescribed but {g.get('implied_condition', '?')} ({g.get('icd10_code', 'UNKNOWN')}) is not documented — confirm diagnosis or review medication appropriateness."
+                for g in medication_gaps
+            ] + [
+                f"• Lab: {g.get('lab_analyte', '?')} {g.get('lab_value', '')} — {g.get('implied_condition', '?')} ({g.get('icd10_code', 'UNKNOWN')})"
+                for g in deduped_report_gaps
+            ]
+            return "\n".join(lines) if lines else "• No coding gaps identified."
 
     def _run_combined_lab_analysis(
         self,
@@ -273,9 +503,6 @@ class HuddleAnalyzer:
             gap_dict["contributing_report_ids"] = [
                 str(report_id).strip() for report_id in gap_dict.get("contributing_report_ids", []) if str(report_id).strip()
             ]
-            gap_dict["in_problem_list"] = bool(gap_dict.get("in_problem_list", False))
-            if gap_dict["in_problem_list"]:
-                continue
             combined_gaps.append(gap_dict)
         deduped = self._dedupe_combined_lab_gaps(combined_gaps)
         return deduped, (result.summary or self._build_combined_lab_summary(deduped))
@@ -307,171 +534,11 @@ class HuddleAnalyzer:
             deduped.append(gap)
         return deduped
 
-    @staticmethod
-    def _build_summary_note(
-        problem_list: list[str],
-        medications: list[str],
-        medication_gaps: list[dict[str, Any]],
-        deduped_report_gaps: list[dict[str, Any]],
-        combined_gaps: list[dict[str, Any]],
-    ) -> dict[str, str]:
-        if not deduped_report_gaps and not medication_gaps and not combined_gaps:
-            return {
-                "context": (
-                    "Medication review, per-report lab review, and combined multi-report review found no clear missing diagnosis gaps."
-                ),
-                "suggested_huddle_note_bullet": "No additional medication- or lab-driven coding gaps identified at this time.",
-                "physician_prompt": "Continue routine monitoring and update coding if clinically significant changes emerge.",
-            }
-        med_conditions = ", ".join(
-            list(
-                dict.fromkeys(
-                    str(gap.get("implied_condition", "")).strip()
-                    for gap in medication_gaps
-                    if str(gap.get("implied_condition", "")).strip()
-                )
-            )[:5]
-        )
-        lab_conditions = ", ".join(
-            list(
-                dict.fromkeys(
-                    str(gap.get("implied_condition", "")).strip()
-                    for gap in deduped_report_gaps
-                    if str(gap.get("implied_condition", "")).strip()
-                )
-            )[:5]
-        )
-        combined_conditions = ", ".join(
-            list(
-                dict.fromkeys(
-                    str(gap.get("implied_condition", "")).strip()
-                    for gap in combined_gaps
-                    if str(gap.get("implied_condition", "")).strip()
-                )
-            )[:5]
-        )
-        return {
-            "context": (
-                f"Problem list reviewed ({len(problem_list)} entries), medications reviewed ({len(medications)} active), "
-                f"medication gaps detected ({len(medication_gaps)}), and lab-report gaps detected ({len(deduped_report_gaps)}). "
-                f"Medication-implied conditions: {med_conditions or 'none'}. "
-                f"Lab-implied conditions: {lab_conditions or 'none'}. "
-                f"Combined multi-report conditions: {combined_conditions or 'none'}."
-            ),
-            "suggested_huddle_note_bullet": (
-                "Review flagged medications, report-level lab findings, and combined multi-report signals; then confirm coding updates."
-            ),
-            "physician_prompt": (
-                "For each medication, report-level lab flag, and combined trend signal, confirm diagnosis relevance/status and update problem list/coding where appropriate."
-            ),
-        }
-
-    def _fetch_clinical_thresholds(self, labs: list[dict[str, str]], model: str, use_llm_tools: bool = True) -> str:
-        if use_llm_tools:
-            try:
-                return self._fetch_clinical_thresholds_with_llm_tools(labs, model)
-            except Exception as exc:
-                if self._is_tool_validation_error(exc):
-                    print("LLM tool validation failed (model attempted invalid tool call). Falling back to direct search.")
-                    return self._fetch_clinical_thresholds_direct(labs)
-                raise
-        return self._fetch_clinical_thresholds_direct(labs)
-
-    def _fetch_clinical_thresholds_direct(self, labs: list[dict[str, str]]) -> str:
-        try:
-            from langchain_community.tools import DuckDuckGoSearchRun
-
-            search = DuckDuckGoSearchRun()
-            queries = [
-                "clinical lab reference ranges eGFR A1C BNP creatinine hemoglobin 2024",
-                "ICD-10 lab value thresholds diabetes CKD heart failure anemia",
-            ]
-            chunks: list[str] = []
-            for query in queries:
-                try:
-                    result = search.invoke(query)
-                    self._log_debug(
-                        "tool.ddg.query",
-                        {"input": {"query": query}, "output": {"output_preview": str(result)[:600]}},
-                    )
-                    if result and len(result) > 50:
-                        chunks.append(f"Search: {query}\n{result[:2000]}")
-                except Exception:
-                    continue
-            if chunks:
-                return "\n\n---\n\n".join(chunks) + "\n\nUse the above retrieved guidelines where applicable."
-            return ""
-        except ImportError:
-            return ""
-        except Exception:
-            return ""
-
-    def _fetch_clinical_thresholds_with_llm_tools(self, labs: list[dict[str, str]], model: str) -> str:
-        try:
-            from langchain_community.tools import DuckDuckGoSearchRun
-            from langchain_core.messages import ToolMessage
-
-            search_tool = DuckDuckGoSearchRun()
-            llm = self._build_llm(model)
-            fallback_llm = self._build_llm(FALLBACK_HUDDLE_MODEL)
-            llm_with_tools = llm.bind_tools([search_tool])
-            fallback_llm_with_tools = fallback_llm.bind_tools([search_tool])
-
-            lab_names = list(dict.fromkeys(lab.get("labanalyte", "") for lab in labs if lab.get("labanalyte")))[:30]
-            lab_preview = ", ".join(lab_names) if lab_names else "various lab tests"
-            prompt = PROMPT_THRESHOLD_SEARCH.format(lab_preview=lab_preview)
-
-            messages = [HumanMessage(content=prompt)]
-            all_results: list[str] = []
-            for _ in range(5):
-                response = self._invoke_with_fallback(
-                    primary=llm_with_tools,
-                    fallback=fallback_llm_with_tools,
-                    fallback_base_llm=fallback_llm,
-                    messages=messages,
-                    operation_name="threshold search planning",
-                )
-                if not getattr(response, "tool_calls", None):
-                    break
-                tool_messages = []
-                for index, tool_call in enumerate(response.tool_calls):
-                    args = tool_call.get("args") or {}
-                    query = args.get("query") or args.get("input")
-                    if isinstance(query, dict):
-                        query = query.get("query") or query.get("input") or ""
-                    query = str(query) if query else ""
-                    try:
-                        output = search_tool.invoke(query)[:1500] if query else "[No query]"
-                        all_results.append(f"Query: {query}\n{output}")
-                        self._log_debug(
-                            "tool.ddg.tool_call",
-                            {"input": {"query": query}, "output": {"output_preview": output[:600]}},
-                        )
-                    except Exception:
-                        output = "[Search failed]"
-                        all_results.append(f"Query: {query}\n[Search failed]")
-                        self._log_debug(
-                            "tool.ddg.tool_call_error",
-                            {"input": {"query": query}, "output": {"error": "[Search failed]"}},
-                        )
-                    tool_messages.append(ToolMessage(content=output, tool_call_id=tool_call.get("id", str(index))))
-                messages.append(response)
-                messages.extend(tool_messages)
-
-            if all_results:
-                return "\n\n---\n\n".join(all_results) + "\n\nUse the above retrieved guidelines where applicable."
-            return ""
-        except ImportError:
-            return ""
-        except Exception as exc:
-            if self._is_tool_validation_error(exc):
-                raise  # Let caller fall back to direct search
-            return ""
 
     @staticmethod
     def _build_llm(model: str) -> Any:
-        # Anthropic reference (disabled):
-        # return ChatAnthropic(model="claude-sonnet-4-6", temperature=0)
+        if model.startswith("claude-"):
+            return ChatAnthropic(model=model, temperature=0)
         if model.startswith("gemini-"):
             return ChatGoogleGenerativeAI(model=model, temperature=0)
         return ChatGroq(model=model, temperature=0)
@@ -485,13 +552,17 @@ class HuddleAnalyzer:
         operation_name: str,
         schema_cls: Optional[Type[BaseModel]] = None,
     ) -> Any:
+        self._log_llm_call(operation_name, messages)
         try:
-            return primary.invoke(messages)
+            response = primary.invoke(messages)
+            self._log_llm_response(operation_name, response)
+            return response
         except Exception as exc:
             if schema_cls and self._is_tool_validation_error(exc):
                 repaired = self._try_parse_failed_generation(exc, schema_cls)
                 if repaired is not None:
                     print(f"Recovered structured output from tool_use_failed for {operation_name}.")
+                    self._log_llm_response(operation_name, repaired, note="recovered from failed_generation")
                     return repaired
                 print(
                     f"Could not parse failed_generation for {operation_name}. "
@@ -501,6 +572,7 @@ class HuddleAnalyzer:
                     base_llm=fallback_base_llm,
                     messages=messages,
                     schema_cls=schema_cls,
+                    operation_name=operation_name,
                 )
             if self._is_limit_error(exc):
                 print(
@@ -508,7 +580,10 @@ class HuddleAnalyzer:
                     f"Retrying with fallback '{FALLBACK_HUDDLE_MODEL}'."
                 )
                 try:
-                    return fallback.invoke(messages)
+                    self._log_llm_call(operation_name, messages, note="fallback model")
+                    response = fallback.invoke(messages)
+                    self._log_llm_response(operation_name, response, note="fallback model")
+                    return response
                 except Exception as fallback_exc:
                     if schema_cls and self._is_output_parse_error(fallback_exc):
                         print(
@@ -519,6 +594,7 @@ class HuddleAnalyzer:
                             base_llm=fallback_base_llm,
                             messages=messages,
                             schema_cls=schema_cls,
+                            operation_name=operation_name,
                         )
                     raise
             raise
@@ -610,6 +686,7 @@ class HuddleAnalyzer:
         base_llm: Any,
         messages: list[Any],
         schema_cls: Type[BaseModel],
+        operation_name: str = "json repair",
     ) -> BaseModel:
         schema_json = json.dumps(schema_cls.model_json_schema(), indent=2)
         repair_instruction = HumanMessage(
@@ -620,7 +697,10 @@ class HuddleAnalyzer:
                 f"{schema_json}"
             )
         )
-        repaired = base_llm.invoke([*messages, repair_instruction])
+        repair_messages = [*messages, repair_instruction]
+        self._log_llm_call(operation_name, repair_messages, note="JSON repair")
+        repaired = base_llm.invoke(repair_messages)
+        self._log_llm_response(operation_name, repaired, note="JSON repair")
         content = getattr(repaired, "content", "")
         parsed_obj = self._parse_json_object_from_text(str(content))
         return schema_cls.model_validate(parsed_obj)
@@ -648,9 +728,67 @@ class HuddleAnalyzer:
 
     @staticmethod
     def _ensure_provider_env() -> None:
+        # Gemini: langchain-google-genai reads GOOGLE_API_KEY
         gemini_api_key = os.getenv("GEMINI_API_KEY")
         if gemini_api_key and not os.getenv("GOOGLE_API_KEY"):
             os.environ["GOOGLE_API_KEY"] = gemini_api_key
+        # Anthropic: langchain-anthropic reads ANTHROPIC_API_KEY (already correct name)
+
+    # ── LLM prompt / response logging ────────────────────────────────────────
+
+    @staticmethod
+    def _format_messages_for_log(messages: list[Any]) -> str:
+        """Render a list of LangChain messages as readable text."""
+        parts: list[str] = []
+        for msg in messages:
+            role = type(msg).__name__.replace("Message", "").upper()
+            content = getattr(msg, "content", "")
+            if isinstance(content, list):
+                # Multi-part content (tool results etc.)
+                content = "\n".join(
+                    str(block.get("text", block) if isinstance(block, dict) else block)
+                    for block in content
+                )
+            parts.append(f"[{role}]\n{str(content)}")
+        return "\n\n".join(parts)
+
+    @staticmethod
+    def _format_response_for_log(response: Any) -> str:
+        """Render an LLM response as readable text."""
+        if response is None:
+            return "N/A"
+        if hasattr(response, "model_dump"):
+            try:
+                return json.dumps(response.model_dump(), indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+        content = getattr(response, "content", None)
+        if content is not None:
+            return str(content)
+        try:
+            return json.dumps(response, indent=2, ensure_ascii=False)
+        except Exception:
+            return str(response)
+
+    def _log_llm_call(
+        self, operation_name: str, messages: list[Any], note: str = ""
+    ) -> None:
+        sep = "-" * 60
+        label = f"[LLM REQUEST] {operation_name}" + (f"  ({note})" if note else "")
+        prompt_text = self._format_messages_for_log(messages)
+        print(f"\n{sep}\n{label}\n{sep}")
+        print(prompt_text[:12000])
+        print(sep)
+
+    def _log_llm_response(
+        self, operation_name: str, response: Any, note: str = ""
+    ) -> None:
+        sep = "-" * 60
+        # label = f"[LLM RESPONSE] {operation_name}" + (f"  ({note})" if note else "")
+        # response_text = self._format_response_for_log(response)
+        # print(f"\n{sep}\n{label}\n{sep}")
+        # print(response_text[:12000])
+        # print(sep)
 
     def _log_debug(self, step: str, payload: Any) -> None:
         separator = "-" * 40

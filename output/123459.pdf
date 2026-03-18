@@ -1,0 +1,262 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 2 /Kids [5 0 R 7 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 3574 >>
+stream
+BT
+/F2 18 Tf
+1 0 0 1 50 720 Tm
+/F2 18 Tf
+(Patient Huddle Summary) Tj
+/F2 12 Tf
+1 0 0 1 50 696 Tm
+/F2 12 Tf
+(Patient ID: 123459) Tj
+/F1 10 Tf
+1 0 0 1 50 672 Tm
+/F1 10 Tf
+(----------------------------------------) Tj
+/F2 14 Tf
+1 0 0 1 50 652 Tm
+/F2 14 Tf
+(Medication to Diagnosis:) Tj
+/F2 12 Tf
+1 0 0 1 50 626 Tm
+/F2 12 Tf
+(Summary of findings:) Tj
+/F1 10 Tf
+1 0 0 1 50 610 Tm
+/F1 10 Tf
+(No medication-diagnosis gaps identified.) Tj
+/F1 10 Tf
+1 0 0 1 50 589 Tm
+/F1 10 Tf
+(No medication-diagnosis gaps identified.) Tj
+/F1 10 Tf
+1 0 0 1 50 576 Tm
+/F1 10 Tf
+(----------------------------------------) Tj
+/F2 14 Tf
+1 0 0 1 50 556 Tm
+/F2 14 Tf
+(Lab Report Analysis:) Tj
+/F2 12 Tf
+1 0 0 1 50 530 Tm
+/F2 12 Tf
+(Abnormal lab result 1:) Tj
+/F2 10 Tf
+1 0 0 1 50 514 Tm
+/F2 10 Tf
+(Lab Test Name:  ) Tj
+/F1 10 Tf
+(001453 HEMOGLOBIN A1C-001453-P) Tj
+/F2 10 Tf
+1 0 0 1 50 501 Tm
+/F2 10 Tf
+(Labanalyte:  ) Tj
+/F1 10 Tf
+(HEMOGLOBIN A1C) Tj
+/F2 10 Tf
+1 0 0 1 50 488 Tm
+/F2 10 Tf
+(Lab Value:  ) Tj
+/F1 10 Tf
+(6.50%) Tj
+/F2 10 Tf
+1 0 0 1 50 475 Tm
+/F2 10 Tf
+(Expected Value:  ) Tj
+/F1 10 Tf
+(Below 5.7%) Tj
+/F2 12 Tf
+1 0 0 1 50 454 Tm
+/F2 12 Tf
+(Abnormal lab result 2:) Tj
+/F2 10 Tf
+1 0 0 1 50 438 Tm
+/F2 10 Tf
+(Lab Test Name:  ) Tj
+/F1 10 Tf
+(303756 LIPID PANEL-303756-P) Tj
+/F2 10 Tf
+1 0 0 1 50 425 Tm
+/F2 10 Tf
+(Labanalyte:  ) Tj
+/F1 10 Tf
+(LDL CHOL CALC \(NIH\)) Tj
+/F2 10 Tf
+1 0 0 1 50 412 Tm
+/F2 10 Tf
+(Lab Value:  ) Tj
+/F1 10 Tf
+(128 mg/dL) Tj
+/F2 10 Tf
+1 0 0 1 50 399 Tm
+/F2 10 Tf
+(Expected Value:  ) Tj
+/F1 10 Tf
+(<100 mg/dL) Tj
+/F2 12 Tf
+1 0 0 1 50 378 Tm
+/F2 12 Tf
+(Abnormal lab result 3:) Tj
+/F2 10 Tf
+1 0 0 1 50 362 Tm
+/F2 10 Tf
+(Lab Test Name:  ) Tj
+/F1 10 Tf
+(322000 COMP. METABOLIC PANEL \(14\)-322000-P) Tj
+/F2 10 Tf
+1 0 0 1 50 349 Tm
+/F2 10 Tf
+(Labanalyte:  ) Tj
+/F1 10 Tf
+(GLUCOSE) Tj
+/F2 10 Tf
+1 0 0 1 50 336 Tm
+/F2 10 Tf
+(Lab Value:  ) Tj
+/F1 10 Tf
+(104 mg/dL) Tj
+/F2 10 Tf
+1 0 0 1 50 323 Tm
+/F2 10 Tf
+(Expected Value:  ) Tj
+/F1 10 Tf
+(70-99 mg/dL fasting) Tj
+/F2 12 Tf
+1 0 0 1 50 302 Tm
+/F2 12 Tf
+(Abnormal lab result 4:) Tj
+/F2 10 Tf
+1 0 0 1 50 286 Tm
+/F2 10 Tf
+(Lab Test Name:  ) Tj
+/F1 10 Tf
+(322000 COMP. METABOLIC PANEL \(14\)-322000-P) Tj
+/F2 10 Tf
+1 0 0 1 50 273 Tm
+/F2 10 Tf
+(Labanalyte:  ) Tj
+/F1 10 Tf
+(GLOBULIN, TOTAL) Tj
+/F2 10 Tf
+1 0 0 1 50 260 Tm
+/F2 10 Tf
+(Lab Value:  ) Tj
+/F1 10 Tf
+(2.0 g/dL) Tj
+/F2 10 Tf
+1 0 0 1 50 247 Tm
+/F2 10 Tf
+(Expected Value:  ) Tj
+/F1 10 Tf
+(2.3-3.5 g/dL) Tj
+/F2 12 Tf
+1 0 0 1 50 226 Tm
+/F2 12 Tf
+(Summary of Lab Report findings:) Tj
+/F1 10 Tf
+1 0 0 1 50 210 Tm
+/F1 10 Tf
+(Recent lab findings highlight a significant pattern consistent with undiagnosed Diabetes) Tj
+/F1 10 Tf
+1 0 0 1 50 197 Tm
+/F1 10 Tf
+(Mellitus with associated dyslipidemia and impaired glucose regulation \(E11.9\). Evidence) Tj
+/F1 10 Tf
+1 0 0 1 50 184 Tm
+/F1 10 Tf
+(includes a Hemoglobin A1C of 6.5%, a fasting glucose of 104 mg/dL, and an LDL cholesterol of) Tj
+/F1 10 Tf
+1 0 0 1 50 171 Tm
+/F1 10 Tf
+(128 mg/dL. Separately, hypoglobulinemia \(R77.1\) is noted, with a total globulin level of 2.0) Tj
+/F1 10 Tf
+1 0 0 1 50 158 Tm
+/F1 10 Tf
+(g/dL. These findings represent two distinct, previously undocumented diagnoses requiring) Tj
+/F1 10 Tf
+1 0 0 1 50 145 Tm
+/F1 10 Tf
+(further clinical evaluation.) Tj
+/F1 10 Tf
+1 0 0 1 50 124 Tm
+/F1 10 Tf
+(----------------------------------------) Tj
+/F2 14 Tf
+1 0 0 1 50 104 Tm
+/F2 14 Tf
+(Pre-Huddle Summary:) Tj
+/F1 10 Tf
+1 0 0 1 50 78 Tm
+/F1 10 Tf
+(- Lab: The patient's total globulin is 2.0 g/dL \(expected 2.3-3.5 g/dL\), implying) Tj
+/F1 10 Tf
+1 0 0 1 50 65 Tm
+/F1 10 Tf
+(Hypoglobulinemia \(ICD-10: R77.1\).) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 623 >>
+stream
+BT
+/F1 10 Tf
+1 0 0 1 50 712 Tm
+/F1 10 Tf
+(- Pattern: The patient's Hemoglobin A1C of 6.50%, Glucose of 104 mg/dL, and LDL Cholesterol of) Tj
+/F1 10 Tf
+1 0 0 1 50 699 Tm
+/F1 10 Tf
+(128 mg/dL collectively indicate Diabetes Mellitus with Dyslipidemia and Impaired Glucose) Tj
+/F1 10 Tf
+1 0 0 1 50 686 Tm
+/F1 10 Tf
+(Regulation \(ICD-10: E11.9\).) Tj
+/F1 10 Tf
+1 0 0 1 50 665 Tm
+/F1 10 Tf
+(- Action: Please confirm and update the patient's problem list with Hypoglobulinemia and the) Tj
+/F1 10 Tf
+1 0 0 1 50 652 Tm
+/F1 10 Tf
+(comprehensive diagnosis of Diabetes Mellitus with Dyslipidemia and Impaired Glucose Regulation.) Tj
+ET
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000272 00000 n 
+0000000408 00000 n 
+0000004034 00000 n 
+0000004170 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+4844
+%%EOF

@@ -1,0 +1,23 @@
+{
+  "patient_id": "123470",
+  "medication_to_diagnosis": {
+    "suspected_gaps": [
+      {
+        "medication": "FAMCICLOVIR 500 MG TABLET",
+        "implied_condition": "Herpes Zoster",
+        "icd10_code": "B02.9",
+        "evidence": "Famciclovir is an antiviral medication primarily used to treat infections caused by herpes viruses, such as herpes zoster (shingles), genital herpes, and herpes labialis. The patient's problem list does not include any diagnosis related to herpes viral infections. This medication strongly implies an active or recurrent herpes infection, most commonly herpes zoster, that is not documented in the problem list."
+      }
+    ],
+    "summary": "FAMCICLOVIR 500 MG TABLET implies Herpes Zoster (B02.9) not documented in the problem list."
+  },
+  "lab_report_to_diagnosis": {
+    "suspected_gaps": [],
+    "narrative_summary": "No significant lab abnormalities identified across all reports."
+  },
+  "combined_lab_report_to_diagnosis": {
+    "suspected_gaps": [],
+    "summary": "No new conditions identified from combined report analysis."
+  },
+  "doctor_summary": "\u2022 Medication: Patient is prescribed FAMCICLOVIR 500 MG TABLET, which typically indicates Herpes Zoster (B02.9), but this diagnosis is not documented in the problem list \u2014 confirm and document if appropriate, or reassess medication necessity.\n\u2022 Action: Review and confirm the above conditions for documentation in the problem list, and reconcile any medications lacking a corresponding diagnosis."
+}

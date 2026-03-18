@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-LineType = Literal["title", "heading", "subheading", "body", "blank", "separator"]
+LineType = Literal["title", "heading", "subheading", "body", "body_kv", "blank", "separator"]
 
 
 class HuddlePdfExporter:
@@ -45,131 +45,154 @@ class HuddlePdfExporter:
         """Return list of (line_type, text) for PDF rendering."""
         medication = analysis.get("medication_to_diagnosis", {})
         lab = analysis.get("lab_report_to_diagnosis", {})
-        combined = analysis.get("combined_lab_report_to_diagnosis", {})
-        note = analysis.get("summary_note_before_huddle", {})
+        doctor_summary = analysis.get("doctor_summary", "")
 
         blocks: list[tuple[LineType, str]] = [
-            ("title", f"Patient Huddle Summary"),
+            ("title", "Patient Huddle Summary"),
             ("subheading", f"Patient ID: {patient_id}"),
             ("blank", ""),
             ("separator", "-" * 40),
             ("blank", ""),
-            ("heading", "1. Medication to Diagnosis Gaps"),
-            ("body", medication.get("summary", "N/A")),
-            ("blank", ""),
         ]
 
+        # ── Section 1: Medication to Diagnosis ──────────────────────────────
+        blocks.extend([
+            ("heading", "Medication to Diagnosis:"),
+            ("blank", ""),
+        ])
+
         med_gaps = medication.get("suspected_gaps", []) or []
+        med_summary = medication.get("summary", "").strip()
+        if med_summary:
+            blocks.extend([
+                ("subheading", "Summary of findings:"),
+                ("body", med_summary),
+                ("blank", ""),
+            ])
+
         if not med_gaps:
             blocks.append(("body", "No medication-diagnosis gaps identified."))
         else:
             for i, gap in enumerate(med_gaps, start=1):
                 blocks.extend([
-                    ("subheading", f"{i}. {gap.get('medication', 'N/A')}"),
-                    ("body", f"Implied condition: {gap.get('implied_condition', 'N/A')}"),
-                    ("body", f"ICD-10: {gap.get('icd10_code', 'UNKNOWN')}"),
-                    ("body", f"Evidence: {gap.get('evidence', 'N/A')}"),
+                    ("subheading", f"Finding {i}:"),
+                    ("body_kv", "Medication:", gap.get("medication", "N/A")),
+                    ("body_kv", "Missing diagnosis:", f"{gap.get('implied_condition', 'N/A')} ({gap.get('icd10_code', 'UNKNOWN')})"),
+                    ("body_kv", "Evidence:", gap.get("evidence", "N/A")),
                     ("blank", ""),
                 ])
 
+        # ── Section 2: Lab Report Analysis ──────────────────────────────────
         blocks.extend([
             ("separator", "-" * 40),
             ("blank", ""),
-            ("heading", "2. Per-Report Lab to Diagnosis Gaps"),
-            ("body", lab.get("summary", "N/A")),
+            ("heading", "Lab Report Analysis:"),
             ("blank", ""),
         ])
 
         lab_gaps = lab.get("suspected_gaps", []) or []
         if not lab_gaps:
-            blocks.append(("body", "No per-report lab gaps identified."))
+            blocks.append(("body", "No abnormal lab findings identified."))
         else:
             for i, gap in enumerate(lab_gaps, start=1):
+                expected = gap.get("expected_value", "").strip() or "N/A"
                 blocks.extend([
-                    ("subheading", f"{i}. {gap.get('lab_analyte', 'N/A')} = {gap.get('lab_value', 'N/A')}"),
-                    ("body", f"Report: {gap.get('lab_report_id', 'N/A')}"),
-                    ("body", f"Implied condition: {gap.get('implied_condition', 'N/A')}"),
-                    ("body", f"ICD-10: {gap.get('icd10_code', 'UNKNOWN')}"),
-                    ("body", f"Evidence: {gap.get('evidence', 'N/A')}"),
+                    ("subheading", f"Abnormal lab result {i}:"),
+                    ("body_kv", "Lab Test Name:", gap.get("lab_report_id", "N/A")),
+                    ("body_kv", "Labanalyte:", gap.get("lab_analyte", "N/A")),
+                    ("body_kv", "Lab Value:", gap.get("lab_value", "N/A")),
+                    ("body_kv", "Expected Value:", expected),
                     ("blank", ""),
                 ])
 
+        narrative = lab.get("narrative_summary", "").strip()
+        if narrative:
+            blocks.extend([
+                ("subheading", "Summary of Lab Report findings:"),
+                ("body", narrative),
+                ("blank", ""),
+            ])
+
+        # ── Section 3: Doctor Summary ────────────────────────────────────────
         blocks.extend([
             ("separator", "-" * 40),
             ("blank", ""),
-            ("heading", "3. Combined Multi-Report Signals"),
-            ("body", combined.get("summary", "N/A")),
+            ("heading", "Pre-Huddle Summary:"),
             ("blank", ""),
         ])
-
-        combined_gaps = combined.get("suspected_gaps", []) or []
-        if not combined_gaps:
-            blocks.append(("body", "No combined multi-report gaps identified."))
+        if doctor_summary:
+            for line in doctor_summary.splitlines():
+                line = line.strip()
+                if line:
+                    blocks.append(("body", line))
+                    blocks.append(("blank", ""))
         else:
-            for i, gap in enumerate(combined_gaps, start=1):
-                report_ids = ", ".join(gap.get("contributing_report_ids", []) or [])
-                blocks.extend([
-                    ("subheading", f"{i}. {gap.get('implied_condition', 'N/A')}"),
-                    ("body", f"ICD-10: {gap.get('icd10_code', 'UNKNOWN')}"),
-                    ("body", f"Contributing reports: {report_ids or 'N/A'}"),
-                    ("body", f"Evidence: {gap.get('evidence', 'N/A')}"),
-                    ("blank", ""),
-                ])
-
-        blocks.extend([
-            ("separator", "-" * 40),
-            ("blank", ""),
-            ("heading", "4. Suggested Huddle Note"),
-            ("subheading", "Context"),
-            ("body", note.get("context", "N/A")),
-            ("blank", ""),
-            ("subheading", "Suggested bullet"),
-            ("body", note.get("suggested_huddle_note_bullet", "N/A")),
-            ("blank", ""),
-            ("subheading", "Physician prompt"),
-            ("body", note.get("physician_prompt", "N/A")),
-        ])
+            blocks.append(("body", "No gaps identified."))
 
         return blocks
 
-    def _build_pdf(self, blocks: list[tuple[LineType, str]]) -> bytes:
+    def _build_pdf(self, blocks: list[tuple]) -> bytes:
         """Build PDF with proper headings, spacing, and fonts."""
-        # Expand blocks into drawable lines with font/size info
-        draw_items: list[tuple[str, int, bool, float]] = []  # (text, font_size, bold, leading)
-        for line_type, text in blocks:
+        # Each draw item: (segments, font_size, leading)
+        # segments: list of (text, is_bold) — allows mixed bold/regular on one line
+        draw_items: list[tuple[list[tuple[str, bool]], int, float]] = []
+
+        for block in blocks:
+            line_type = block[0]
+
             if line_type == "blank":
-                draw_items.append(("", self.BODY_SIZE, False, self.BLANK_LEADING))
+                draw_items.append(([], self.BODY_SIZE, self.BLANK_LEADING))
                 continue
             if line_type == "separator":
-                draw_items.append((text[: self.LINE_WIDTH], self.BODY_SIZE, False, self.SEPARATOR_LEADING))
+                text = block[1]
+                draw_items.append(([(text[: self.LINE_WIDTH], False)], self.BODY_SIZE, self.SEPARATOR_LEADING))
                 continue
 
-            wrapped = self._wrap_line(text, self.LINE_WIDTH)
+            if line_type == "body_kv":
+                # block = ("body_kv", label, value)
+                label = str(block[1])
+                value = str(block[2]) if len(block) > 2 else ""
+                kv_text = f"{label}  {value}"
+                wrapped = self._wrap_kv_line(label, value, self.LINE_WIDTH)
+                for idx, (lbl_seg, val_seg) in enumerate(wrapped):
+                    segs: list[tuple[str, bool]] = []
+                    if lbl_seg:
+                        segs.append((lbl_seg, True))
+                    if val_seg:
+                        segs.append((val_seg, False))
+                    if not segs:
+                        segs = [(kv_text, False)]
+                    draw_items.append((segs, self.BODY_SIZE, self.BODY_LEADING))
+                continue
+
+            text = block[1]
             if line_type == "title":
-                for w in wrapped:
-                    draw_items.append((w, self.TITLE_SIZE, True, self.TITLE_LEADING))
+                for w in self._wrap_line(text, self.LINE_WIDTH):
+                    draw_items.append(([(w, True)], self.TITLE_SIZE, self.TITLE_LEADING))
             elif line_type == "heading":
-                for w in wrapped:
-                    draw_items.append((w, self.HEADING_SIZE, True, self.HEADING_LEADING))
+                for w in self._wrap_line(text, self.LINE_WIDTH):
+                    draw_items.append(([(w, True)], self.HEADING_SIZE, self.HEADING_LEADING))
             elif line_type == "subheading":
-                for w in wrapped:
-                    draw_items.append((w, self.SUBHEADING_SIZE, True, self.SUBHEADING_LEADING))
+                for w in self._wrap_line(text, self.LINE_WIDTH):
+                    draw_items.append(([(w, True)], self.SUBHEADING_SIZE, self.SUBHEADING_LEADING))
             else:
-                for w in wrapped:
-                    draw_items.append((w, self.BODY_SIZE, False, self.BODY_LEADING))
+                # Parse **...** inline bold markers for body text
+                inline_segs = self._parse_inline_bold(text)
+                for line_segs in self._wrap_rich_segments(inline_segs, self.LINE_WIDTH):
+                    draw_items.append((line_segs, self.BODY_SIZE, self.BODY_LEADING))
 
         # Paginate
         max_height = self.MARGIN_TOP - self.MARGIN_BOTTOM
-        pages_content: list[list[tuple[str, int, bool, float]]] = []
-        current_page: list[tuple[str, int, bool, float]] = []
-        current_y = 0
+        pages_content: list[list[tuple[list[tuple[str, bool]], int, float]]] = []
+        current_page: list[tuple[list[tuple[str, bool]], int, float]] = []
+        current_y = 0.0
 
         for item in draw_items:
-            _, _, _, leading = item
+            _, _, leading = item
             if current_y + leading > max_height and current_page:
                 pages_content.append(current_page)
                 current_page = []
-                current_y = 0
+                current_y = 0.0
             current_page.append(item)
             current_y += leading
 
@@ -185,7 +208,6 @@ class HuddlePdfExporter:
         objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
 
         for i, page_items in enumerate(pages_content):
-            page_obj_num = 5 + i * 2
             content_obj_num = 6 + i * 2
             objects.append(
                 (
@@ -196,12 +218,20 @@ class HuddlePdfExporter:
 
             stream_lines = ["BT"]
             y = self.MARGIN_TOP
-            for text, font_size, bold, leading in page_items:
-                font = "/F2" if bold else "/F1"
-                stream_lines.append(f"{font} {font_size} Tf")
-                safe = self._to_pdf_safe(text)
-                escaped = self._pdf_escape(safe)
-                stream_lines.append(f"1 0 0 1 {self.MARGIN_LEFT} {y} Tm ({escaped}) Tj")
+            for segments, font_size, leading in page_items:
+                if not segments:
+                    y -= leading
+                    continue
+                # Position cursor at start of this line
+                first_font = "/F2" if segments[0][1] else "/F1"
+                stream_lines.append(f"{first_font} {font_size} Tf")
+                stream_lines.append(f"1 0 0 1 {self.MARGIN_LEFT} {y} Tm")
+                for seg_text, seg_bold in segments:
+                    font = "/F2" if seg_bold else "/F1"
+                    stream_lines.append(f"{font} {font_size} Tf")
+                    safe = self._to_pdf_safe(seg_text)
+                    escaped = self._pdf_escape(safe)
+                    stream_lines.append(f"({escaped}) Tj")
                 y -= leading
             stream_lines.append("ET")
 
@@ -214,6 +244,7 @@ class HuddlePdfExporter:
     def _to_pdf_safe(text: str) -> str:
         """Convert Unicode to Latin-1-safe chars (Helvetica supports Latin-1 only)."""
         replacements = [
+            ("\u2022", "-"),   # bullet point
             ("\u2014", "-"),   # em dash
             ("\u2013", "-"),   # en dash
             ("\u2018", "'"),   # left single quote
@@ -247,6 +278,95 @@ class HuddlePdfExporter:
             lines.append(current)
             current = word
         lines.append(current)
+        return lines
+
+    @staticmethod
+    def _parse_inline_bold(text: str) -> list[tuple[str, bool]]:
+        """Split text on **...** markers into (text, is_bold) segments."""
+        parts = text.split("**")
+        return [(part, i % 2 == 1) for i, part in enumerate(parts) if part]
+
+    @staticmethod
+    def _wrap_rich_segments(
+        segments: list[tuple[str, bool]], width: int
+    ) -> list[list[tuple[str, bool]]]:
+        """Word-wrap a list of (text, bold) segments to lines of at most `width` chars.
+
+        Consecutive same-bold words on the same line are merged into one segment.
+        """
+        # Flatten to a word list preserving bold flag
+        words: list[tuple[str, bool]] = []
+        for text, bold in segments:
+            for word in text.split():
+                words.append((word, bold))
+
+        if not words:
+            return [[("", False)]]
+
+        lines: list[list[tuple[str, bool]]] = []
+        current_words: list[tuple[str, bool]] = []
+        current_len = 0
+
+        for word, bold in words:
+            needed = current_len + (1 if current_words else 0) + len(word)
+            if current_words and needed > width:
+                lines.append(HuddlePdfExporter._merge_word_segments(current_words))
+                current_words = [(word, bold)]
+                current_len = len(word)
+            else:
+                current_words.append((word, bold))
+                current_len = needed
+
+        if current_words:
+            lines.append(HuddlePdfExporter._merge_word_segments(current_words))
+        return lines
+
+    @staticmethod
+    def _merge_word_segments(words: list[tuple[str, bool]]) -> list[tuple[str, bool]]:
+        """Join consecutive same-bold words with spaces into single segments."""
+        if not words:
+            return []
+        result: list[tuple[str, bool]] = []
+        cur_text, cur_bold = words[0]
+        for word, bold in words[1:]:
+            if bold == cur_bold:
+                cur_text += " " + word
+            else:
+                result.append((cur_text, cur_bold))
+                cur_text, cur_bold = word, bold
+        result.append((cur_text, cur_bold))
+        return result
+
+    @staticmethod
+    def _wrap_kv_line(label: str, value: str, width: int) -> list[tuple[str, str]]:
+        """Wrap a key-value pair; returns list of (label_part, value_part) segment pairs.
+
+        The label (bold) appears only on the first wrapped line. Continuation lines
+        are indented to align with the value start.
+        """
+        label_with_space = label + "  "
+        indent = " " * len(label_with_space)
+        first_value_width = width - len(label_with_space)
+        if first_value_width < 10:
+            first_value_width = width
+
+        words = value.split()
+        if not words:
+            return [(label_with_space, "")]
+
+        lines: list[tuple[str, str]] = []
+        current = words[0]
+        is_first = True
+        for word in words[1:]:
+            candidate = f"{current} {word}"
+            limit = first_value_width if is_first else (width - len(indent))
+            if len(candidate) <= limit:
+                current = candidate
+            else:
+                lines.append((label_with_space if is_first else indent, current))
+                is_first = False
+                current = word
+        lines.append((label_with_space if is_first else indent, current))
         return lines
 
     @staticmethod

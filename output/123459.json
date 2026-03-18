@@ -1,0 +1,64 @@
+{
+  "patient_id": "123459",
+  "medication_to_diagnosis": {
+    "suspected_gaps": [],
+    "summary": "No medication-diagnosis gaps identified."
+  },
+  "lab_report_to_diagnosis": {
+    "suspected_gaps": [
+      {
+        "lab_report_id": "001453    HEMOGLOBIN A1C-001453-P",
+        "lab_analyte": "HEMOGLOBIN A1C",
+        "lab_value": "6.50%",
+        "expected_value": "Below 5.7%",
+        "implied_condition": "Diabetes Mellitus",
+        "icd10_code": "E11.9",
+        "evidence": "Hemoglobin A1C >= 6.5% indicates diabetes."
+      },
+      {
+        "lab_report_id": "303756    LIPID PANEL-303756-P",
+        "lab_analyte": "LDL CHOL CALC (NIH)",
+        "lab_value": "128 mg/dL",
+        "expected_value": "<100 mg/dL",
+        "implied_condition": "Hyperlipidemia",
+        "icd10_code": "E78.5",
+        "evidence": "LDL Cholesterol 128 mg/dL (above optimal <100 mg/dL)"
+      },
+      {
+        "lab_report_id": "322000    COMP. METABOLIC PANEL (14)-322000-P",
+        "lab_analyte": "GLUCOSE",
+        "lab_value": "104 mg/dL",
+        "expected_value": "70-99 mg/dL fasting",
+        "implied_condition": "Impaired Fasting Glucose",
+        "icd10_code": "R73.01",
+        "evidence": "Reported value 104 mg/dL is above the normal fasting reference range of 70-99 mg/dL."
+      },
+      {
+        "lab_report_id": "322000    COMP. METABOLIC PANEL (14)-322000-P",
+        "lab_analyte": "GLOBULIN, TOTAL",
+        "lab_value": "2.0 g/dL",
+        "expected_value": "2.3-3.5 g/dL",
+        "implied_condition": "Hypoglobulinemia",
+        "icd10_code": "R77.1",
+        "evidence": "Reported value 2.0 g/dL is below the normal reference range of 2.3-3.5 g/dL."
+      }
+    ],
+    "narrative_summary": "Recent lab findings highlight a significant pattern consistent with undiagnosed Diabetes Mellitus with associated dyslipidemia and impaired glucose regulation (E11.9). Evidence includes a Hemoglobin A1C of 6.5%, a fasting glucose of 104 mg/dL, and an LDL cholesterol of 128 mg/dL. Separately, hypoglobulinemia (R77.1) is noted, with a total globulin level of 2.0 g/dL. These findings represent two distinct, previously undocumented diagnoses requiring further clinical evaluation."
+  },
+  "combined_lab_report_to_diagnosis": {
+    "suspected_gaps": [
+      {
+        "implied_condition": "Diabetes Mellitus with Dyslipidemia and Impaired Glucose Regulation",
+        "icd10_code": "E11.9",
+        "evidence": "Report 001453: HEMOGLOBIN A1C 6.50% indicates Diabetes Mellitus. Report 322000: GLUCOSE 104 mg/dL indicates Impaired Fasting Glucose. Report 303756: LDL CHOL CALC (NIH) 128 mg/dL indicates Hyperlipidemia. The combination of these findings points to Diabetes Mellitus with associated dyslipidemia and persistent glucose dysregulation, suggesting a broader metabolic syndrome-like pattern.",
+        "contributing_report_ids": [
+          "001453    HEMOGLOBIN A1C-001453-P",
+          "322000    COMP. METABOLIC PANEL (14)-322000-P",
+          "303756    LIPID PANEL-303756-P"
+        ]
+      }
+    ],
+    "summary": "Combined lab analysis reveals a pattern of metabolic dysregulation, including confirmed Diabetes Mellitus, Impaired Fasting Glucose, and Hyperlipidemia, indicating a need for comprehensive management of these co-occurring conditions."
+  },
+  "doctor_summary": "\u2022 Lab: The patient's total globulin is 2.0 g/dL (expected 2.3-3.5 g/dL), implying Hypoglobulinemia (ICD-10: R77.1).\n\u2022 Pattern: The patient's Hemoglobin A1C of 6.50%, Glucose of 104 mg/dL, and LDL Cholesterol of 128 mg/dL collectively indicate Diabetes Mellitus with Dyslipidemia and Impaired Glucose Regulation (ICD-10: E11.9).\n\u2022 Action: Please confirm and update the patient's problem list with Hypoglobulinemia and the comprehensive diagnosis of Diabetes Mellitus with Dyslipidemia and Impaired Glucose Regulation."
+}

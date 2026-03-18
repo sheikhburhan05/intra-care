@@ -15,17 +15,16 @@ class MedicationGap(BaseModel):
             "problem list (or why no clear linked diagnosis exists)."
         )
     )
-    in_problem_list: bool = Field(description="Whether this condition is in the patient's ICD-10 problem list")
 
 
 class LabGap(BaseModel):
     lab_report_id: str = Field(default="", description="Lab report ID where this gap was detected")
     lab_analyte: str = Field(description="Lab test name")
     lab_value: str = Field(description="Reported value")
+    expected_value: str = Field(default="", description="Normal reference range for this analyte (e.g., '70-99 mg/dL fasting')")
     implied_condition: str = Field(description="Condition suggested by abnormal lab")
     icd10_code: str = Field(default="UNKNOWN", description="Best matching ICD-10 code for the implied condition")
     evidence: str = Field(description="Clinical threshold or reasoning")
-    in_problem_list: bool = Field(description="Whether this condition is in the patient's ICD-10 problem list")
 
 
 class MedicationToDiagnosis(BaseModel):
@@ -43,7 +42,6 @@ class CombinedLabGap(BaseModel):
     icd10_code: str = Field(default="UNKNOWN", description="Best matching ICD-10 code for the implied condition")
     evidence: str = Field(description="Cross-report rationale or threshold-based trend")
     contributing_report_ids: list[str] = Field(default_factory=list, description="Report IDs supporting the finding")
-    in_problem_list: bool = Field(description="Whether this condition is already in the patient's problem list")
 
 
 class CombinedLabReportToDiagnosis(BaseModel):
