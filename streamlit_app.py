@@ -103,11 +103,10 @@ patient_id = st.text_input(
 with st.expander("⚙️  Analyses to run", expanded=False):
     col1, col2 = st.columns(2)
     with col1:
-        run_medication   = st.checkbox("Medication Gap Analysis",          value=True)
-        run_per_report   = st.checkbox("Per-Report Lab Analysis",          value=True)
+        run_medication = st.checkbox("Medication Gap Analysis", value=True)
+        run_lab        = st.checkbox("Lab Report Analysis", value=True)
     with col2:
-        run_multi_report = st.checkbox("Multi-Report (Combined) Analysis", value=True)
-        run_summary      = st.checkbox("Doctor Pre-Huddle Summary",        value=True)
+        run_summary = st.checkbox("Doctor Pre-Huddle Summary", value=True)
 
 st.divider()
 
@@ -120,7 +119,7 @@ if run_clicked:
         st.error("Please enter a Patient ID before running.")
         st.stop()
 
-    if not any([run_medication, run_per_report, run_multi_report, run_summary]):
+    if not any([run_medication, run_lab, run_summary]):
         st.error("Please select at least one analysis to run.")
         st.stop()
 
@@ -134,16 +133,15 @@ if run_clicked:
                 analyzer = HuddleAnalyzer()
 
                 steps = []
-                if run_medication:   steps.append("Medication Gap Analysis")
-                if run_per_report:   steps.append("Per-Report Lab Analysis")
-                if run_multi_report: steps.append("Multi-Report (Combined) Analysis")
-                if run_summary:      steps.append("Doctor Pre-Huddle Summary")
+                if run_medication: steps.append("Medication Gap Analysis")
+                if run_lab:        steps.append("Lab Report Analysis (per-report + combined)")
+                if run_summary:   steps.append("Doctor Pre-Huddle Summary")
 
                 st.write(f"**Patient:** `{patient_id}`")
                 st.write("**Running:** " + " · ".join(steps))
                 st.divider()
 
-                if run_per_report or run_multi_report:
+                if run_lab:
                     st.write("⏳ [Tool Call] Fetching clinical thresholds…")
 
                 # Live progress: each message is written into the status box
@@ -155,10 +153,10 @@ if run_clicked:
                     patients_json_path=patients_json,
                     output_dir=tmp_dir,
                     model=DEFAULT_HUDDLE_MODEL,
-                    use_web_search=run_per_report or run_multi_report,
+                    use_web_search=run_lab,
                     enable_medication_analysis=run_medication,
-                    enable_per_report_lab_analysis=run_per_report,
-                    enable_combined_lab_analysis=run_multi_report,
+                    enable_per_report_lab_analysis=run_lab,
+                    enable_combined_lab_analysis=run_lab,
                     enable_doctor_summary=run_summary,
                     progress_callback=on_progress,
                 )

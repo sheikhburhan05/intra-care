@@ -34,14 +34,37 @@ class HuddlePdfExporter:
     BLANK_LEADING = 8
     SEPARATOR_LEADING = 12
 
-    def export(self, patient_id: str, analysis: dict[str, Any], output_path: str | Path) -> Path:
+    def export(
+        self,
+        patient_id: str,
+        analysis: dict[str, Any],
+        output_path: str | Path,
+        *,
+        enable_medication_analysis: bool = True,
+        enable_lab_analysis: bool = True,
+        enable_doctor_summary: bool = True,
+    ) -> Path:
         path = Path(output_path)
-        blocks = self._build_content_blocks(patient_id, analysis)
+        blocks = self._build_content_blocks(
+            patient_id,
+            analysis,
+            enable_medication_analysis=enable_medication_analysis,
+            enable_lab_analysis=enable_lab_analysis,
+            enable_doctor_summary=enable_doctor_summary,
+        )
         pdf_bytes = self._build_pdf(blocks)
         path.write_bytes(pdf_bytes)
         return path
 
-    def _build_content_blocks(self, patient_id: str, analysis: dict[str, Any]) -> list[tuple[LineType, str]]:
+    def _build_content_blocks(
+        self,
+        patient_id: str,
+        analysis: dict[str, Any],
+        *,
+        enable_medication_analysis: bool = True,
+        enable_lab_analysis: bool = True,
+        enable_doctor_summary: bool = True,
+    ) -> list[tuple[LineType, str]]:
         """Return list of (line_type, text) for PDF rendering."""
         medication = analysis.get("medication_to_diagnosis", {})
         lab = analysis.get("lab_report_to_diagnosis", {})
@@ -56,78 +79,81 @@ class HuddlePdfExporter:
         ]
 
         # ── Section 1: Medication to Diagnosis ──────────────────────────────
-        blocks.extend([
-            ("heading", "Medication to Diagnosis:"),
-            ("blank", ""),
-        ])
-
-        med_gaps = medication.get("suspected_gaps", []) or []
-        med_summary = medication.get("summary", "").strip()
-        if med_summary:
+        if enable_medication_analysis:
             blocks.extend([
-                ("subheading", "Summary of findings:"),
-                ("body", med_summary),
+                ("heading", "Medication to Diagnosis:"),
                 ("blank", ""),
             ])
 
-        if not med_gaps:
-            blocks.append(("body", "No medication-diagnosis gaps identified."))
-        else:
-            for i, gap in enumerate(med_gaps, start=1):
+            med_gaps = medication.get("suspected_gaps", []) or []
+            med_summary = medication.get("summary", "").strip()
+            if med_summary:
                 blocks.extend([
-                    ("subheading", f"Finding {i}:"),
-                    ("body_kv", "Medication:", gap.get("medication", "N/A")),
-                    ("body_kv", "Missing diagnosis:", f"{gap.get('implied_condition', 'N/A')} ({gap.get('icd10_code', 'UNKNOWN')})"),
-                    ("body_kv", "Evidence:", gap.get("evidence", "N/A")),
+                    ("subheading", "Summary of findings:"),
+                    ("body", med_summary),
                     ("blank", ""),
                 ])
+
+            if not med_gaps:
+                blocks.append(("body", "No medication-diagnosis gaps identified."))
+            else:
+                for i, gap in enumerate(med_gaps, start=1):
+                    blocks.extend([
+                        ("subheading", f"Finding {i}:"),
+                        ("body_kv", "Medication:", gap.get("medication", "N/A")),
+                        ("body_kv", "Missing diagnosis:", f"{gap.get('implied_condition', 'N/A')} ({gap.get('icd10_code', 'UNKNOWN')})"),
+                        ("body_kv", "Evidence:", gap.get("evidence", "N/A")),
+                        ("blank", ""),
+                    ])
 
         # ── Section 2: Lab Report Analysis ──────────────────────────────────
-        blocks.extend([
-            ("separator", "-" * 40),
-            ("blank", ""),
-            ("heading", "Lab Report Analysis:"),
-            ("blank", ""),
-        ])
-
-        lab_gaps = lab.get("suspected_gaps", []) or []
-        if not lab_gaps:
-            blocks.append(("body", "No abnormal lab findings identified."))
-        else:
-            for i, gap in enumerate(lab_gaps, start=1):
-                expected = gap.get("expected_value", "").strip() or "N/A"
-                blocks.extend([
-                    ("subheading", f"Abnormal lab result {i}:"),
-                    ("body_kv", "Lab Test Name:", gap.get("lab_report_id", "N/A")),
-                    ("body_kv", "Labanalyte:", gap.get("lab_analyte", "N/A")),
-                    ("body_kv", "Lab Value:", gap.get("lab_value", "N/A")),
-                    ("body_kv", "Expected Value:", expected),
-                    ("blank", ""),
-                ])
-
-        narrative = lab.get("narrative_summary", "").strip()
-        if narrative:
+        if enable_lab_analysis:
             blocks.extend([
-                ("subheading", "Summary of Lab Report findings:"),
-                ("body", narrative),
+                ("separator", "-" * 40),
+                ("blank", ""),
+                ("heading", "Lab Report Analysis:"),
                 ("blank", ""),
             ])
 
+            lab_gaps = lab.get("suspected_gaps", []) or []
+            if not lab_gaps:
+                blocks.append(("body", "No abnormal lab findings identified."))
+            else:
+                for i, gap in enumerate(lab_gaps, start=1):
+                    expected = gap.get("expected_value", "").strip() or "N/A"
+                    blocks.extend([
+                        ("subheading", f"Abnormal lab result {i}:"),
+                        ("body_kv", "Lab Test Name:", gap.get("lab_report_id", "N/A")),
+                        ("body_kv", "Labanalyte:", gap.get("lab_analyte", "N/A")),
+                        ("body_kv", "Lab Value:", gap.get("lab_value", "N/A")),
+                        ("body_kv", "Expected Value:", expected),
+                        ("blank", ""),
+                    ])
+
+            narrative = lab.get("narrative_summary", "").strip()
+            if narrative:
+                blocks.extend([
+                    ("subheading", "Summary of Lab Report findings:"),
+                    ("body", narrative),
+                    ("blank", ""),
+                ])
+
         # ── Section 3: Doctor Summary ────────────────────────────────────────
-        blocks.extend([
-            ("separator", "-" * 40),
-            ("blank", ""),
-            ("heading", "Pre-Huddle Summary:"),
-            ("blank", ""),
-        ])
-        if doctor_summary:
-            for line in doctor_summary.splitlines():
-                line = line.strip()
-                if line:
-                    blocks.append(("body", line))
-                    blocks.append(("blank", ""))
-        else:
-            blocks.append(("body", "No gaps identified."))
+        if enable_doctor_summary:
+            blocks.extend([
+                ("separator", "-" * 40),
+                ("blank", ""),
+                ("heading", "Pre-Huddle Summary:"),
+                ("blank", ""),
+            ])
+            if doctor_summary:
+                for line in doctor_summary.splitlines():
+                    line = line.strip()
+                    if line:
+                        blocks.append(("body", line))
+                        blocks.append(("blank", ""))
+            else:
+                blocks.append(("body", "No gaps identified."))
 
         return blocks
 

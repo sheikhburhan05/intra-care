@@ -26,10 +26,9 @@ from src.services.huddle_analyzer import HuddleAnalyzer
 # ── Menu definitions ──────────────────────────────────────────────────────────
 
 ANALYSES = [
-    ("medication",  "Medication Gap Analysis"),
-    ("per_report",  "Per-Report Lab Analysis"),
-    ("multi_report","Multi-Report (Combined) Analysis"),
-    ("summary",     "Doctor Pre-Huddle Summary"),
+    ("medication", "Medication Gap Analysis"),
+    ("lab",        "Lab Report Analysis (per-report + combined)"),
+    ("summary",    "Doctor Pre-Huddle Summary"),
 ]
 
 SEP = "=" * 58
@@ -119,12 +118,13 @@ def main() -> None:
         print(f"  Running analysis for patient: {pid}")
         print(SEP)
         try:
+            run_lab = selected.get("lab", False)
             analyzer.analyze_patient_huddle(
                 patient_id=pid,
                 output_dir=str(output_dir()),
                 enable_medication_analysis=selected["medication"],
-                enable_per_report_lab_analysis=selected["per_report"],
-                enable_combined_lab_analysis=selected["multi_report"],
+                enable_per_report_lab_analysis=run_lab,
+                enable_combined_lab_analysis=run_lab,
                 enable_doctor_summary=selected["summary"],
             )
         except ValueError as exc:

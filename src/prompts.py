@@ -1,6 +1,6 @@
 """Prompt templates for gap analysis (medication, per-report lab, combined multi-report)."""
 
-PROMPT_MEDICATION_GAP_ANALYSIS = """You are an expert clinical coding-gap assistant.
+PROMPT_MEDICATION_GAP_ANALYSIS = """You are an expert clinical gap finding assistant.
 
 Analyze active medications against the patient's existing problem list.
 
@@ -21,7 +21,7 @@ DO NOT return medications that are reasonably explained by existing diagnoses.
 
 ---
 
-Enhanced Clinical Reasoning Rules:
+Reasoning Rules:
 - Use clinically accepted indications based on standard medical references.
 - DO NOT over-specify a condition unless the medication is highly disease-specific.
 - If a medication is used for multiple related conditions, generalize to the appropriate condition group.
@@ -246,7 +246,6 @@ Your role is similar to a clinician reviewing multiple lab reports over time to 
 Your goal:
 Identify clinically meaningful conditions that are supported ONLY by combining findings from 2 or more lab reports—not from any single report alone.
 
-{thresholds_block}
 ## Patient Problem List
 {problem_list_json}
 
