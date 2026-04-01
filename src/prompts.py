@@ -79,6 +79,27 @@ Matching & Overlap Rules (CRITICAL):
   • The medication has multiple valid indications
   • At least one reasonable indication matches the problem list
 
+Preventive / systemic therapy linkage (CRITICAL — reduces false "no gap"):
+- For medications whose **primary, standard use** is chronic prevention or risk reduction in a
+  **specific clinical domain** (e.g., statins → lipid/ASCVD; ACE inhibitors / ARBs / many CCBs →
+  hypertension or cardiovascular/renal indications; metformin → glycemic disorder), the problem
+  list must contain a diagnosis that **clearly belongs to that same domain** (or an accepted
+  synonym/spectrum match per the rules above).
+- **Do NOT** infer linkage from unrelated organ-system or symptomatic problems when those
+  diagnoses do not reasonably subsume the medication's indication category.
+- **Do NOT** treat **obesity alone**, nonspecific "risk," or generic encounter/administrative
+  entries as sufficient documentation for **statin** therapy, **antihypertensive** therapy, or
+  **antidiabetic** therapy when there is no corresponding lipid-, blood-pressure-, or
+  glucose-related problem documented.
+- **HMG-CoA reductase inhibitors (statins)**:
+  If the problem list has **no** hyperlipidemia, dyslipidemia, mixed hyperlipidemia, ASCVD,
+  cerebrovascular disease, peripheral arterial disease, diabetes mellitus, familial
+  hypercholesterolemia, or other problem that **clearly** covers lipid management or
+  guideline-appropriate statin indication, **flag as a gap** with a generalized implied
+  condition (e.g., dyslipidemia / hyperlipidemia or ASCVD risk management; E78.x or relevant
+  Z/I range as appropriate). This applies even when other chronic problems are present that
+  do not explain the statin.
+
 ---
 
 Exclusion Rules:
@@ -102,6 +123,11 @@ Exclusion Rules:
 
 - DO NOT assume a new disease if an existing diagnosis reasonably explains
   the medication.
+
+- Exception: "Reasonable explanation" requires **category alignment** for preventive/systemic
+  drugs (see "Preventive / systemic therapy linkage" above). A grab-bag of unrelated chronic
+  problems does not explain a statin, antihypertensive, or antidiabetic without a matching-type
+  diagnosis.
 
 ---
 
@@ -135,15 +161,22 @@ Examples:
 ---
 
 Summary Rules:
-- The `summary` MUST explicitly list each flagged medication and its implied condition.
-- Use generalized condition names when confidence is not high.
-
-Example:
-"FAMCICLOVIR implies Herpes viral infection (B00–B02) not documented;
- SERTRALINE implies Depressive/Anxiety disorder (F32–F41) missing from problem list."
+- Anchor the `summary` on the gaps you actually returned in `suspected_gaps`: synthesize
+  what is missing or mismatched, medication by medication, in plain clinical language.
+- The `summary` MUST explicitly cover each entry in `suspected_gaps` (medication + implied
+  condition / documentation gap). Use generalized condition names when confidence is not high.
+- After the gap-focused portion, you MAY add a short optional block labeled
+  "Additional considerations:" (or similar) for items that did NOT meet the bar to be
+  listed in `suspected_gaps` but are still worth a quick chart review — for example:
+  borderline confidence, plausible alternative indications already weakly represented,
+  polypharmacy overlap, or a medication with multiple valid uses where documentation
+  could be tightened. Keep this brief; do not duplicate full gap reasoning and do not
+  contradict your exclusion rules.
+- If there are no such non-gap items, omit the optional block entirely.
 
 - If no gaps are found:
-  "No medication-diagnosis gaps identified."
+  "No medication-diagnosis gaps identified." (You may still add a one-line optional
+  consideration only when something clinically subtle is worth flagging without being a gap.)
 
 ---
 
